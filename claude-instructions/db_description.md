@@ -5,6 +5,7 @@
 ## Общие соглашения
 
 - **СУБД:** PostgreSQL.
+- **Все первичные и внешние ключи** — `UUID` (тип `uuid` в PostgreSQL). Генерация — на стороне Go: **UUIDv7** через `github.com/google/uuid` (`uuid.NewV7()`). На уровне БД `DEFAULT` не ставим, приложение всегда передаёт ID явно. UUIDv7 time-ordered, что даёт хорошую B-tree locality при вставках, плюс отсутствие enumeration-атак на публичные URL (`/api/v1/items/:id`, `/api/v1/orders/:id`).
 - **Все временны́е поля** — `TIMESTAMPTZ` с `DEFAULT NOW()`. Поля `created_at` / `updated_at` заполняются бэком / триггерами.
 - **Цены** хранятся в **рублях** (целые числа, `INT`). Копейки не используются.
 - **`sale`** — скидка в **процентах** (целое число `0..100`). `0` означает отсутствие скидки. Итоговая цена считается на бэке / фронте как `round(price * (100 - sale) / 100)`.
@@ -14,7 +15,7 @@
   - `ON DELETE RESTRICT` — для защиты исторических данных (заказы и их позиции, используемые типы опций).
   - Товары физически **не удаляются** — скрытие через `item.hidden`. `RESTRICT` на `order_item.item_id` — страховка.
 - **Снапшоты в заказах** — все данные заказа (цены, названия, артикулы, опции и их значения) хранятся **копиями текстом/числом** на момент создания заказа. Это гарантирует, что последующие изменения товаров и опций не сломают историю.
-- **Картинки:** в `picture.object_key` хранится **относительный путь внутри бакета MinIO** (например, `items/42/main.jpg`). Полный URL собирает бэк при отдаче API (`PUBLIC_MINIO_URL + bucket + object_key`). Для MVP бакет с публичным read; позже можно перейти на presigned URL без миграций данных.
+- **Картинки:** в `picture.object_key` хранится **относительный путь внутри бакета MinIO** (например, `items/018f7d3e-.../main.jpg`). Полный URL собирает бэк при отдаче API (`PUBLIC_MINIO_URL + bucket + object_key`). Для MVP бакет с публичным read; позже можно перейти на presigned URL без миграций данных.
 
 ---
 
@@ -47,7 +48,7 @@ CREATE TYPE order_status AS ENUM (
 
 | Поле | Тип | Ограничения | Примечание |
 |---|---|---|---|
-| `id` | SERIAL | PK | |
+| `id` | UUID | PK | |
 | `name` | TEXT | NOT NULL | Название (редактируется админом) |
 | `description_info` | TEXT | NOT NULL | Markdown. Блок «Информация о товаре». Подзаголовки («Технология:», «Материал:», …) — жирным, значения после них пишет админ |
 | `description_other` | TEXT | NOT NULL | Markdown (маркированный список). Блок «Особенности». Формируется из динамических инпутов «добавить особенность» в админке |
@@ -62,8 +63,8 @@ CREATE TYPE order_status AS ENUM (
 
 | Поле | Тип | Ограничения | Примечание |
 |---|---|---|---|
-| `id` | SERIAL | PK | |
-| `object_key` | TEXT | NOT NULL | Относительный путь в MinIO-бакете (например, `items/42/main.jpg`) |
+| `id` | UUID | PK | |
+| `object_key` | TEXT | NOT NULL | Относительный путь в MinIO-бакете (например, `items/018f7d3e-.../main.jpg`) |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() | |
 | `updated_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() | |
 
@@ -71,8 +72,8 @@ CREATE TYPE order_status AS ENUM (
 
 | Поле | Тип | Ограничения |
 |---|---|---|
-| `item_id` | INT | NOT NULL, FK → `item(id)` ON DELETE CASCADE |
-| `picture_id` | INT | NOT NULL, FK → `picture(id)` ON DELETE CASCADE |
+| `item_id` | UUID | NOT NULL, FK → `item(id)` ON DELETE CASCADE |
+| `picture_id` | UUID | NOT NULL, FK → `picture(id)` ON DELETE CASCADE |
 | `position` | INT | NOT NULL. `1` = титульная, далее по порядку отображения в галерее |
 | **PK** | | `(item_id, picture_id)` |
 
@@ -86,7 +87,7 @@ CREATE TYPE order_status AS ENUM (
 
 | Поле | Тип | Ограничения | Примечание |
 |---|---|---|---|
-| `id` | SERIAL | PK | |
+| `id` | UUID | PK | |
 | `code` | TEXT | NOT NULL, UNIQUE | Внутренний ключ: `size`, `paint`, `engraving`, … |
 | `label` | TEXT | NOT NULL | Отображаемое имя для UI: `Размер`, `Покраска`, `Гравировка` |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() | |
@@ -98,9 +99,9 @@ CREATE TYPE order_status AS ENUM (
 
 | Поле | Тип | Ограничения | Примечание |
 |---|---|---|---|
-| `id` | SERIAL | PK | |
-| `item_id` | INT | NOT NULL, FK → `item(id)` ON DELETE CASCADE | |
-| `type_id` | INT | NOT NULL, FK → `option_type(id)` ON DELETE RESTRICT | Тип нельзя удалить, пока он используется |
+| `id` | UUID | PK | |
+| `item_id` | UUID | NOT NULL, FK → `item(id)` ON DELETE CASCADE | |
+| `type_id` | UUID | NOT NULL, FK → `option_type(id)` ON DELETE RESTRICT | Тип нельзя удалить, пока он используется |
 | `value` | TEXT | NOT NULL | `S` / `M` / `L`; `Да` / `Нет`; и т.п. |
 | `price` | INT | NOT NULL, DEFAULT 0 | Доплата в рублях. `0` — для дефолтных/«Нет» |
 | `position` | INT | NOT NULL, DEFAULT 0 | Порядок в UI внутри одного типа |
@@ -118,7 +119,7 @@ CREATE TYPE order_status AS ENUM (
 
 | Поле | Тип | Ограничения | Примечание |
 |---|---|---|---|
-| `id` | SERIAL | PK | |
+| `id` | UUID | PK | |
 | `name` | TEXT | NOT NULL | «Игры», «Фильмы», «Декор», «Кастомизация ПК», … |
 | `type` | `category_type` | NOT NULL | `figure` (фигурки) или `other` (макеты) |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() | |
@@ -128,9 +129,9 @@ CREATE TYPE order_status AS ENUM (
 
 | Поле | Тип | Ограничения | Примечание |
 |---|---|---|---|
-| `id` | SERIAL | PK | |
+| `id` | UUID | PK | |
 | `name` | TEXT | NOT NULL | «Dota 2», «Вазы», «Горшки» |
-| `category_id` | INT | NOT NULL, FK → `category(id)` ON DELETE CASCADE | Удаление категории удаляет её подкатегории |
+| `category_id` | UUID | NOT NULL, FK → `category(id)` ON DELETE CASCADE | Удаление категории удаляет её подкатегории |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() | |
 | `updated_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() | |
 
@@ -138,8 +139,8 @@ CREATE TYPE order_status AS ENUM (
 
 | Поле | Тип | Ограничения |
 |---|---|---|
-| `item_id` | INT | NOT NULL, FK → `item(id)` ON DELETE CASCADE |
-| `subcategory_id` | INT | NOT NULL, FK → `subcategory(id)` ON DELETE CASCADE |
+| `item_id` | UUID | NOT NULL, FK → `item(id)` ON DELETE CASCADE |
+| `subcategory_id` | UUID | NOT NULL, FK → `subcategory(id)` ON DELETE CASCADE |
 | **PK** | | `(item_id, subcategory_id)` |
 
 Товар может относиться к нескольким подкатегориям, в том числе из разных категорий (например, одновременно «Фильмы» и «Коллекционирование»). Принадлежность товара к категории выводится через `JOIN subcategory`.
@@ -154,7 +155,7 @@ CREATE TYPE order_status AS ENUM (
 
 | Поле | Тип | Ограничения | Примечание |
 |---|---|---|---|
-| `id` | SERIAL | PK | |
+| `id` | UUID | PK | |
 | `email` | TEXT | NOT NULL, UNIQUE | |
 | `password_hash` | TEXT | NOT NULL | Хэш (bcrypt / argon2 — решим на этапе бэка) |
 | `full_name` | TEXT | NOT NULL | |
@@ -167,8 +168,8 @@ CREATE TYPE order_status AS ENUM (
 
 | Поле | Тип | Ограничения |
 |---|---|---|
-| `user_id` | INT | NOT NULL, FK → `"user"(id)` ON DELETE CASCADE |
-| `item_id` | INT | NOT NULL, FK → `item(id)` ON DELETE CASCADE |
+| `user_id` | UUID | NOT NULL, FK → `"user"(id)` ON DELETE CASCADE |
+| `item_id` | UUID | NOT NULL, FK → `item(id)` ON DELETE CASCADE |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 | **PK** | | `(user_id, item_id)` |
 
@@ -188,8 +189,8 @@ CREATE TYPE order_status AS ENUM (
 
 | Поле | Тип | Ограничения | Примечание |
 |---|---|---|---|
-| `id` | SERIAL | PK | |
-| `user_id` | INT | NOT NULL, FK → `"user"(id)` ON DELETE RESTRICT | Нельзя удалить пользователя с заказами |
+| `id` | UUID | PK | |
+| `user_id` | UUID | NOT NULL, FK → `"user"(id)` ON DELETE RESTRICT | Нельзя удалить пользователя с заказами |
 | `status` | `order_status` | NOT NULL, DEFAULT `'created'` | |
 | `total_price` | INT | NOT NULL | Итоговая сумма на момент создания, в рублях |
 | `customer_comment` | TEXT | nullable | Комментарий от покупателя (если предусмотрим поле) |
@@ -203,9 +204,9 @@ CREATE TYPE order_status AS ENUM (
 
 | Поле | Тип | Ограничения | Примечание |
 |---|---|---|---|
-| `id` | SERIAL | PK | |
-| `order_id` | INT | NOT NULL, FK → `"order"(id)` ON DELETE CASCADE | |
-| `item_id` | INT | NOT NULL, FK → `item(id)` ON DELETE RESTRICT | Товары не удаляются; `RESTRICT` — страховка |
+| `id` | UUID | PK | |
+| `order_id` | UUID | NOT NULL, FK → `"order"(id)` ON DELETE CASCADE | |
+| `item_id` | UUID | NOT NULL, FK → `item(id)` ON DELETE RESTRICT | Товары не удаляются; `RESTRICT` — страховка |
 | `quantity` | INT | NOT NULL | |
 | `unit_base_price` | INT | NOT NULL | **Снапшот** базовой цены товара на момент заказа |
 | `unit_total_price` | INT | NOT NULL | **Снапшот** цены с учётом опций (= `unit_base_price` + сумма `price_snapshot` опций) |
@@ -218,8 +219,8 @@ CREATE TYPE order_status AS ENUM (
 
 | Поле | Тип | Ограничения | Примечание |
 |---|---|---|---|
-| `id` | SERIAL | PK | |
-| `order_item_id` | INT | NOT NULL, FK → `order_item(id)` ON DELETE CASCADE | |
+| `id` | UUID | PK | |
+| `order_item_id` | UUID | NOT NULL, FK → `order_item(id)` ON DELETE CASCADE | |
 | `type_code_snapshot` | TEXT | NOT NULL | Снапшот `option_type.code`: `size`, `engraving`, … |
 | `type_label_snapshot` | TEXT | NOT NULL | Снапшот `option_type.label`: `Размер`, `Гравировка`, … |
 | `value_snapshot` | TEXT | NOT NULL | Снапшот `item_option.value`: `M`, `Да`, … |
@@ -247,7 +248,7 @@ CREATE TYPE order_status AS ENUM (
 -- ============================================================
 
 CREATE TABLE item (
-  id                  SERIAL PRIMARY KEY,
+  id                  UUID PRIMARY KEY,
   name                TEXT NOT NULL,
   description_info    TEXT NOT NULL,
   description_other   TEXT NOT NULL,
@@ -260,15 +261,15 @@ CREATE TABLE item (
 );
 
 CREATE TABLE picture (
-  id                  SERIAL PRIMARY KEY,
+  id                  UUID PRIMARY KEY,
   object_key          TEXT NOT NULL,
   created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE item_picture (
-  item_id             INT NOT NULL REFERENCES item(id)    ON DELETE CASCADE,
-  picture_id          INT NOT NULL REFERENCES picture(id) ON DELETE CASCADE,
+  item_id             UUID NOT NULL REFERENCES item(id)    ON DELETE CASCADE,
+  picture_id          UUID NOT NULL REFERENCES picture(id) ON DELETE CASCADE,
   position            INT NOT NULL,
   PRIMARY KEY (item_id, picture_id)
 );
@@ -278,7 +279,7 @@ CREATE TABLE item_picture (
 -- ============================================================
 
 CREATE TABLE option_type (
-  id                  SERIAL PRIMARY KEY,
+  id                  UUID PRIMARY KEY,
   code                TEXT NOT NULL UNIQUE,
   label               TEXT NOT NULL,
   created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -286,9 +287,9 @@ CREATE TABLE option_type (
 );
 
 CREATE TABLE item_option (
-  id                  SERIAL PRIMARY KEY,
-  item_id             INT NOT NULL REFERENCES item(id)        ON DELETE CASCADE,
-  type_id             INT NOT NULL REFERENCES option_type(id) ON DELETE RESTRICT,
+  id                  UUID PRIMARY KEY,
+  item_id             UUID NOT NULL REFERENCES item(id)        ON DELETE CASCADE,
+  type_id             UUID NOT NULL REFERENCES option_type(id) ON DELETE RESTRICT,
   value               TEXT NOT NULL,
   price               INT NOT NULL DEFAULT 0,
   position            INT NOT NULL DEFAULT 0,
@@ -302,7 +303,7 @@ CREATE TABLE item_option (
 -- ============================================================
 
 CREATE TABLE category (
-  id                  SERIAL PRIMARY KEY,
+  id                  UUID PRIMARY KEY,
   name                TEXT NOT NULL,
   type                category_type NOT NULL,
   created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -310,16 +311,16 @@ CREATE TABLE category (
 );
 
 CREATE TABLE subcategory (
-  id                  SERIAL PRIMARY KEY,
+  id                  UUID PRIMARY KEY,
   name                TEXT NOT NULL,
-  category_id         INT NOT NULL REFERENCES category(id) ON DELETE CASCADE,
+  category_id         UUID NOT NULL REFERENCES category(id) ON DELETE CASCADE,
   created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE item_subcategory (
-  item_id             INT NOT NULL REFERENCES item(id)        ON DELETE CASCADE,
-  subcategory_id      INT NOT NULL REFERENCES subcategory(id) ON DELETE CASCADE,
+  item_id             UUID NOT NULL REFERENCES item(id)        ON DELETE CASCADE,
+  subcategory_id      UUID NOT NULL REFERENCES subcategory(id) ON DELETE CASCADE,
   PRIMARY KEY (item_id, subcategory_id)
 );
 
@@ -328,7 +329,7 @@ CREATE TABLE item_subcategory (
 -- ============================================================
 
 CREATE TABLE "user" (
-  id                  SERIAL PRIMARY KEY,
+  id                  UUID PRIMARY KEY,
   email               TEXT NOT NULL UNIQUE,
   password_hash       TEXT NOT NULL,
   full_name           TEXT NOT NULL,
@@ -339,8 +340,8 @@ CREATE TABLE "user" (
 );
 
 CREATE TABLE favorite (
-  user_id             INT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
-  item_id             INT NOT NULL REFERENCES item(id)   ON DELETE CASCADE,
+  user_id             UUID NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  item_id             UUID NOT NULL REFERENCES item(id)   ON DELETE CASCADE,
   created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (user_id, item_id)
 );
@@ -350,8 +351,8 @@ CREATE TABLE favorite (
 -- ============================================================
 
 CREATE TABLE "order" (
-  id                    SERIAL PRIMARY KEY,
-  user_id               INT NOT NULL REFERENCES "user"(id) ON DELETE RESTRICT,
+  id                    UUID PRIMARY KEY,
+  user_id               UUID NOT NULL REFERENCES "user"(id) ON DELETE RESTRICT,
   status                order_status NOT NULL DEFAULT 'created',
   total_price           INT NOT NULL,
   customer_comment      TEXT,
@@ -363,9 +364,9 @@ CREATE TABLE "order" (
 );
 
 CREATE TABLE order_item (
-  id                     SERIAL PRIMARY KEY,
-  order_id               INT NOT NULL REFERENCES "order"(id) ON DELETE CASCADE,
-  item_id                INT NOT NULL REFERENCES item(id)    ON DELETE RESTRICT,
+  id                     UUID PRIMARY KEY,
+  order_id               UUID NOT NULL REFERENCES "order"(id) ON DELETE CASCADE,
+  item_id                UUID NOT NULL REFERENCES item(id)    ON DELETE RESTRICT,
   quantity               INT NOT NULL,
   unit_base_price        INT NOT NULL,
   unit_total_price       INT NOT NULL,
@@ -374,8 +375,8 @@ CREATE TABLE order_item (
 );
 
 CREATE TABLE order_item_option (
-  id                    SERIAL PRIMARY KEY,
-  order_item_id         INT NOT NULL REFERENCES order_item(id) ON DELETE CASCADE,
+  id                    UUID PRIMARY KEY,
+  order_item_id         UUID NOT NULL REFERENCES order_item(id) ON DELETE CASCADE,
   type_code_snapshot    TEXT NOT NULL,
   type_label_snapshot   TEXT NOT NULL,
   value_snapshot        TEXT NOT NULL,

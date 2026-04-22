@@ -12,7 +12,7 @@
 
 ### 1.1. Base URL и версионирование
 
-Все методы имеют префикс `/api`. Версионирование URL (`/api/v1/...`) **не вводим** — проект небольшой, контракт ломаем через явный discontinue/release.
+Все методы имеют префикс `/api/v1`. При необходимости сломать контракт — поднимаем `/api/v2`, старые маршруты живут параллельно до выпила.
 
 ### 1.2. Роли доступа
 
@@ -35,7 +35,7 @@ Cookie `session` (httpOnly, Secure, SameSite=Lax, Max-Age=2592000). Браузе
 ```json
 {
   "statusCode": 400,
-  "url": "/api/items/42",
+  "url": "/api/v1/items/42",
   "message": "Item not found",
   "date": "2026-04-22T18:42:00Z"
 }
@@ -44,7 +44,7 @@ Cookie `session` (httpOnly, Secure, SameSite=Lax, Max-Age=2592000). Браузе
 | Поле | Описание |
 |---|---|
 | `statusCode` | HTTP-код ответа. Дублирует статус, для удобства клиента |
-| `url` | Полный путь запроса, где возникла ошибка (без query-параметров). Пример: `/api/orders/15` |
+| `url` | Полный путь запроса, где возникла ошибка (без query-параметров). Пример: `/api/v1/orders/15` |
 | `message` | Информативное сообщение. Для ожидаемых ошибок — понятный текст (`"Item not found"`, `"Invalid credentials"`). Для непредвиденных (500, паника) — универсальное `"Internal server error"` без раскрытия стека |
 | `date` | Время запроса в ISO 8601 с таймзоной (RFC 3339). Пример: `2026-04-22T18:42:00Z` |
 
@@ -87,15 +87,29 @@ Cookie `session` (httpOnly, Secure, SameSite=Lax, Max-Age=2592000). Браузе
 
 Хэндлер делает формальную проверку (JSON parse, типы). Бизнес-валидация (диапазоны, уникальность, ссылочная целостность) — в сервисе. Ошибки валидации → `400 Bad Request` с понятным `message`.
 
-### 1.10. Health check
+### 1.10. Идентификаторы
 
-- `GET /api/health` — `guest`. Возвращает `200 { "status": "ok" }`. Проверяет доступность Postgres и Redis (пинг). При недоступности любой из зависимостей → `503 Service Unavailable` с единым error-форматом.
+**Все PK и FK в системе — UUIDv7.** Тип в БД: `UUID`. Генерация — на стороне Go (`github.com/google/uuid`, метод `uuid.NewV7()`). БД-уровневого `DEFAULT` нет; приложение всегда передаёт сгенерированный ID в INSERT.
+
+Почему именно v7:
+- Time-ordered (младшие биты — timestamp). Это даёт хорошую B-tree locality при вставках, в отличие от UUIDv4.
+- Не раскрывает sequence, защищён от enumeration-атак (у нас публичные ссылки `/api/v1/items/:id` и `/api/v1/orders/:id`).
+
+Формат на проводе — **строка в каноническом hex-виде с дефисами**: `018f7d3e-4a5b-7c9d-a0b1-c2d3e4f5a6b7`. В JSON всегда строка, не объект и не число.
+
+Path-параметры типа `:id`, `:item_id`, `:picture_id` и т.п. — всегда UUID. Невалидный UUID на входе → `400 Bad Request` с `message = "Invalid UUID"`.
+
+> **Примечание по примерам ниже.** В JSON-примерах этого документа для читаемости местами встречаются числовые ID (`"id": 42`). В реальных ответах там всегда UUID-строка вида `"018f7d3e-..."`. Тип ID на уровне типов — см. [db_description.md](db_description.md).
+
+### 1.11. Health check
+
+- `GET /api/v1/health` — `guest`. Возвращает `200 { "status": "ok" }`. Проверяет доступность Postgres и Redis (пинг). При недоступности любой из зависимостей → `503 Service Unavailable` с единым error-форматом.
 
 ---
 
 ## 2. Аутентификация и сессии
 
-### 2.1. `POST /api/auth/register`
+### 2.1. `POST /api/v1/auth/register`
 
 **Описание:** Регистрация нового пользователя. Автоматически логинит (создаёт сессию и ставит cookie).
 
@@ -149,7 +163,7 @@ Set-Cookie: session=<id>; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=259200
 
 ---
 
-### 2.2. `POST /api/auth/login`
+### 2.2. `POST /api/v1/auth/login`
 
 **Описание:** Вход по email/паролю. Создаёт сессию, ставит cookie.
 
@@ -179,7 +193,7 @@ Set-Cookie: session=<id>; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=259200
 
 ---
 
-### 2.3. `POST /api/auth/logout`
+### 2.3. `POST /api/v1/auth/logout`
 
 **Описание:** Выход из текущей сессии.
 
@@ -205,7 +219,7 @@ Set-Cookie: session=; Max-Age=0; Path=/
 
 ## 3. Профиль пользователя
 
-### 3.1. `GET /api/me`
+### 3.1. `GET /api/v1/me`
 
 **Описание:** Возвращает полный профиль текущего пользователя (из Postgres, не из сессии — нужны все поля, включая phone).
 
@@ -232,7 +246,7 @@ Set-Cookie: session=; Max-Age=0; Path=/
 
 ---
 
-### 3.2. `PATCH /api/me`
+### 3.2. `PATCH /api/v1/me`
 
 **Описание:** Обновление своих полей профиля (full_name, phone). Email и пароль не редактируются (в MVP).
 
@@ -246,12 +260,12 @@ Set-Cookie: session=; Max-Age=0; Path=/
 }
 ```
 
-**Ответ (200):** обновлённый DTO профиля (как в `GET /api/me`).
+**Ответ (200):** обновлённый DTO профиля (как в `GET /api/v1/me`).
 
 **Алгоритм:**
 1. Валидация (full_name не пусто если передано; phone формат).
 2. `UPDATE "user" SET full_name=COALESCE($2, full_name), phone=COALESCE($3, phone), updated_at=NOW() WHERE id=$1 RETURNING ...`.
-3. Если `full_name` изменился — **опционально** обновить сессию в Redis (перезаписать `full_name` в значении), чтобы фронт всегда видел свежее. В MVP можно не делать — фронт дёргает `/api/me` после PATCH и живёт этим.
+3. Если `full_name` изменился — **опционально** обновить сессию в Redis (перезаписать `full_name` в значении), чтобы фронт всегда видел свежее. В MVP можно не делать — фронт дёргает `/api/v1/me` после PATCH и живёт этим.
 4. Вернуть DTO.
 
 **Ошибки:** 400, 401, 500.
@@ -260,7 +274,7 @@ Set-Cookie: session=; Max-Age=0; Path=/
 
 ## 4. Каталог (публичный)
 
-### 4.1. `GET /api/items`
+### 4.1. `GET /api/v1/items`
 
 **Описание:** Список товаров с фильтрацией, поиском, сортировкой, пагинацией. Публичный — возвращает только `hidden=false`.
 
@@ -317,7 +331,7 @@ Set-Cookie: session=; Max-Age=0; Path=/
 
 ---
 
-### 4.2. `GET /api/items/:id`
+### 4.2. `GET /api/v1/items/:id`
 
 **Описание:** Детальная карточка товара — всё: описания, цена, все картинки, опции сгруппированные по типу, подкатегории/категории. Работает **и для скрытых товаров** — флаг `hidden` в ответе, фронт рендерит «Не доступно к заказу».
 
@@ -379,7 +393,7 @@ Set-Cookie: session=; Max-Age=0; Path=/
 
 ---
 
-### 4.3. `GET /api/categories`
+### 4.3. `GET /api/v1/categories`
 
 **Описание:** Список всех категорий с опциональным разворачиванием подкатегорий. Для фронта — построить меню/фильтры.
 
@@ -423,7 +437,7 @@ Set-Cookie: session=; Max-Age=0; Path=/
 
 ---
 
-### 4.4. `GET /api/categories/:id/subcategories`
+### 4.4. `GET /api/v1/categories/:id/subcategories`
 
 **Описание:** Подкатегории указанной категории (короткий эндпоинт, если `with_subcategories` не нужно на всех сразу).
 
@@ -451,7 +465,7 @@ Set-Cookie: session=; Max-Age=0; Path=/
 
 ## 5. Избранное
 
-### 5.1. `GET /api/favorites`
+### 5.1. `GET /api/v1/favorites`
 
 **Описание:** Мои избранные товары. Возвращает те же карточки, что и каталог.
 
@@ -462,7 +476,7 @@ Set-Cookie: session=; Max-Age=0; Path=/
 **Ответ (200):**
 ```json
 {
-  "items": [ /* та же форма, что в GET /api/items */ ],
+  "items": [ /* та же форма, что в GET /api/v1/items */ ],
   "total": 12,
   "limit": 20,
   "offset": 0
@@ -481,7 +495,7 @@ Set-Cookie: session=; Max-Age=0; Path=/
 
 ---
 
-### 5.2. `POST /api/favorites/:item_id`
+### 5.2. `POST /api/v1/favorites/:item_id`
 
 **Описание:** Добавить товар в избранное. Идемпотентно: повторный вызов — не ошибка.
 
@@ -506,7 +520,7 @@ Set-Cookie: session=; Max-Age=0; Path=/
 
 ---
 
-### 5.3. `DELETE /api/favorites/:item_id`
+### 5.3. `DELETE /api/v1/favorites/:item_id`
 
 **Описание:** Убрать товар из избранного. Идемпотентно.
 
@@ -524,7 +538,7 @@ Set-Cookie: session=; Max-Age=0; Path=/
 
 ## 6. Заказы (пользователь)
 
-### 6.1. `POST /api/orders`
+### 6.1. `POST /api/v1/orders`
 
 **Описание:** Создание заказа из содержимого корзины. **Вся ценовая информация проверяется на бэке** — фронт только указывает, какой товар и какие опции.
 
@@ -602,7 +616,7 @@ COMMIT
 
 ---
 
-### 6.2. `GET /api/orders`
+### 6.2. `GET /api/v1/orders`
 
 **Описание:** История моих заказов (краткий вид для списка).
 
@@ -639,7 +653,7 @@ COMMIT
 
 ---
 
-### 6.3. `GET /api/orders/:id`
+### 6.3. `GET /api/v1/orders/:id`
 
 **Описание:** Детали моего заказа. Ownership — проверка в сервисе.
 
@@ -691,7 +705,7 @@ COMMIT
 
 ## 7. Админ — Товары
 
-### 7.1. `GET /api/admin/items`
+### 7.1. `GET /api/v1/admin/items`
 
 **Описание:** Админский список товаров. Отличие от публичного — возвращает **все** товары (в т.ч. `hidden=true`) и дополнительные поля для управления.
 
@@ -707,7 +721,7 @@ COMMIT
 
 ---
 
-### 7.2. `POST /api/admin/items`
+### 7.2. `POST /api/v1/admin/items`
 
 **Описание:** Создать товар. Атомарно: item + subcategory-связи + опции. **Картинки загружаются отдельно** (см. §8) — нужен файл, отдельный multipart.
 
@@ -740,7 +754,7 @@ COMMIT
 
 **Ответ (201 Created):** полный DTO товара (как в 4.2, без картинок — их ещё нет).
 
-**Заголовки ответа:** `Location: /api/items/:id`.
+**Заголовки ответа:** `Location: /api/v1/items/:id`.
 
 **Алгоритм:**
 ```
@@ -754,14 +768,14 @@ COMMIT
        INSERT INTO item_option (item_id, type_id, value, price, position)
 COMMIT
 
-5. Загрузить свежесозданный товар (reuse GET /api/items/:id логики) и вернуть.
+5. Загрузить свежесозданный товар (reuse GET /api/v1/items/:id логики) и вернуть.
 ```
 
 **Ошибки:** 400 (валидация), 401, 403, 404 (subcategory/type не найдены — как 400 с пояснением), 409 (violation уникальности), 500.
 
 ---
 
-### 7.3. `GET /api/admin/items/:id`
+### 7.3. `GET /api/v1/admin/items/:id`
 
 **Описание:** Админская карточка товара. Отличие от 4.2 — не фильтрует по `hidden`, добавляет `created_at/updated_at`.
 
@@ -773,7 +787,7 @@ COMMIT
 
 ---
 
-### 7.4. `PUT /api/admin/items/:id`
+### 7.4. `PUT /api/v1/admin/items/:id`
 
 **Описание:** Полная замена товара. Опции и subcategory-связи **перезаписываются целиком** тем, что в теле. Картинки не трогаются — для них отдельные эндпоинты.
 
@@ -804,7 +818,7 @@ COMMIT
 
 ---
 
-### 7.5. `PATCH /api/admin/items/:id`
+### 7.5. `PATCH /api/v1/admin/items/:id`
 
 **Описание:** Частичное обновление. В MVP основной use-case — быстрое переключение `hidden`. Другие поля можно редактировать через `PUT`.
 
@@ -832,7 +846,7 @@ COMMIT
 
 ## 8. Админ — Картинки товара
 
-### 8.1. `POST /api/admin/items/:id/pictures`
+### 8.1. `POST /api/v1/admin/items/:id/pictures`
 
 **Описание:** Загрузка картинки к товару. MinIO + запись в БД. Позиция в галерее — опциональный параметр; если не указана, назначается `MAX(position) + 1`.
 
@@ -878,7 +892,7 @@ COMMIT
 
 ---
 
-### 8.2. `DELETE /api/admin/items/:item_id/pictures/:picture_id`
+### 8.2. `DELETE /api/v1/admin/items/:item_id/pictures/:picture_id`
 
 **Описание:** Удалить картинку из товара (и из MinIO, если она больше нигде не используется).
 
@@ -902,7 +916,7 @@ COMMIT
 
 ---
 
-### 8.3. `PATCH /api/admin/items/:id/pictures/reorder`
+### 8.3. `PATCH /api/v1/admin/items/:id/pictures/reorder`
 
 **Описание:** Переупорядочить картинки товара.
 
@@ -943,7 +957,7 @@ COMMIT
 
 ## 9. Админ — Опции товаров и типы опций
 
-### 9.1. `GET /api/admin/option-types`
+### 9.1. `GET /api/v1/admin/option-types`
 
 **Описание:** Список типов опций. Для выпадашки в UI админа (чтобы выбирать при создании опции товара).
 
@@ -967,7 +981,7 @@ COMMIT
 
 ---
 
-### 9.2. `POST /api/admin/option-types`
+### 9.2. `POST /api/v1/admin/option-types`
 
 **Описание:** Создать новый тип опции.
 
@@ -993,7 +1007,7 @@ COMMIT
 
 ---
 
-### 9.3. `PATCH /api/admin/option-types/:id`
+### 9.3. `PATCH /api/v1/admin/option-types/:id`
 
 **Описание:** Редактирование типа. `code` **не меняется** (ломает ссылки в логике). Меняется только `label`.
 
@@ -1014,7 +1028,7 @@ COMMIT
 
 ---
 
-### 9.4. `DELETE /api/admin/option-types/:id`
+### 9.4. `DELETE /api/v1/admin/option-types/:id`
 
 **Описание:** Удалить тип. FK на `item_option` — `ON DELETE RESTRICT`, поэтому если тип используется → БД вернёт ошибку → отдаём `409 Conflict`.
 
@@ -1031,7 +1045,7 @@ COMMIT
 
 ---
 
-### 9.5. `POST /api/admin/items/:id/options`
+### 9.5. `POST /api/v1/admin/items/:id/options`
 
 **Описание:** Добавить опцию к существующему товару. Альтернатива перезаписи товара через `PUT`.
 
@@ -1069,7 +1083,7 @@ COMMIT
 
 ---
 
-### 9.6. `PATCH /api/admin/item-options/:id`
+### 9.6. `PATCH /api/v1/admin/item-options/:id`
 
 **Описание:** Редактирование опции товара (`value`, `price`, `position`). `type_id` и `item_id` не меняются.
 
@@ -1092,7 +1106,7 @@ COMMIT
 
 ---
 
-### 9.7. `DELETE /api/admin/item-options/:id`
+### 9.7. `DELETE /api/v1/admin/item-options/:id`
 
 **Описание:** Удалить опцию товара. История заказов не ломается (snapshot).
 
@@ -1108,7 +1122,7 @@ COMMIT
 
 ## 10. Админ — Категории и подкатегории
 
-### 10.1. `POST /api/admin/categories`
+### 10.1. `POST /api/v1/admin/categories`
 
 **Описание:** Создать категорию.
 
@@ -1127,7 +1141,7 @@ COMMIT
 
 ---
 
-### 10.2. `PATCH /api/admin/categories/:id`
+### 10.2. `PATCH /api/v1/admin/categories/:id`
 
 **Описание:** Обновить поля категории (`name`, `type`).
 
@@ -1141,7 +1155,7 @@ COMMIT
 
 ---
 
-### 10.3. `DELETE /api/admin/categories/:id`
+### 10.3. `DELETE /api/v1/admin/categories/:id`
 
 **Описание:** Удалить категорию. `ON DELETE CASCADE` на `subcategory` — подкатегории уходят вместе. Связи `item_subcategory` — тоже через CASCADE.
 
@@ -1155,7 +1169,7 @@ COMMIT
 
 ---
 
-### 10.4. `POST /api/admin/categories/:id/subcategories`
+### 10.4. `POST /api/v1/admin/categories/:id/subcategories`
 
 **Описание:** Создать подкатегорию в категории.
 
@@ -1179,7 +1193,7 @@ COMMIT
 
 ---
 
-### 10.5. `PATCH /api/admin/subcategories/:id`
+### 10.5. `PATCH /api/v1/admin/subcategories/:id`
 
 **Описание:** Обновить поля подкатегории (`name`, `category_id` — можно перенести в другую категорию).
 
@@ -1193,7 +1207,7 @@ COMMIT
 
 ---
 
-### 10.6. `DELETE /api/admin/subcategories/:id`
+### 10.6. `DELETE /api/v1/admin/subcategories/:id`
 
 **Описание:** Удалить подкатегорию. Связи с товарами (`item_subcategory`) уходят CASCADE.
 
@@ -1207,7 +1221,7 @@ COMMIT
 
 ## 11. Админ — Заказы
 
-### 11.1. `GET /api/admin/orders`
+### 11.1. `GET /api/v1/admin/orders`
 
 **Описание:** Список всех заказов для админки (очередь работ). Сортировка по дате создания (новые сверху).
 
@@ -1257,7 +1271,7 @@ COMMIT
 
 ---
 
-### 11.2. `GET /api/admin/orders/:id`
+### 11.2. `GET /api/v1/admin/orders/:id`
 
 **Описание:** Детали заказа для админа — полный вид с `admin_note` и инфой о пользователе.
 
@@ -1286,7 +1300,7 @@ COMMIT
 
 ---
 
-### 11.3. `PATCH /api/admin/orders/:id/status`
+### 11.3. `PATCH /api/v1/admin/orders/:id/status`
 
 **Описание:** Смена статуса заказа. Разрешены только переходы:
 - Вперёд по цепочке: `created → confirmed → manufacturing → delivering → completed`.
@@ -1322,7 +1336,7 @@ COMMIT
 
 ---
 
-### 11.4. `PATCH /api/admin/orders/:id`
+### 11.4. `PATCH /api/v1/admin/orders/:id`
 
 **Описание:** Обновить внутренние поля заказа (сейчас — только `admin_note`).
 
@@ -1345,47 +1359,47 @@ COMMIT
 
 | Метод | Путь | Доступ |
 |---|---|---|
-| GET | `/api/health` | guest |
-| POST | `/api/auth/register` | guest |
-| POST | `/api/auth/login` | guest |
-| POST | `/api/auth/logout` | user |
-| GET | `/api/me` | user |
-| PATCH | `/api/me` | user |
-| GET | `/api/items` | guest |
-| GET | `/api/items/:id` | guest |
-| GET | `/api/categories` | guest |
-| GET | `/api/categories/:id/subcategories` | guest |
-| GET | `/api/favorites` | user |
-| POST | `/api/favorites/:item_id` | user |
-| DELETE | `/api/favorites/:item_id` | user |
-| POST | `/api/orders` | user |
-| GET | `/api/orders` | user |
-| GET | `/api/orders/:id` | user |
-| GET | `/api/admin/items` | admin |
-| POST | `/api/admin/items` | admin |
-| GET | `/api/admin/items/:id` | admin |
-| PUT | `/api/admin/items/:id` | admin |
-| PATCH | `/api/admin/items/:id` | admin |
-| POST | `/api/admin/items/:id/pictures` | admin |
-| DELETE | `/api/admin/items/:item_id/pictures/:picture_id` | admin |
-| PATCH | `/api/admin/items/:id/pictures/reorder` | admin |
-| GET | `/api/admin/option-types` | admin |
-| POST | `/api/admin/option-types` | admin |
-| PATCH | `/api/admin/option-types/:id` | admin |
-| DELETE | `/api/admin/option-types/:id` | admin |
-| POST | `/api/admin/items/:id/options` | admin |
-| PATCH | `/api/admin/item-options/:id` | admin |
-| DELETE | `/api/admin/item-options/:id` | admin |
-| POST | `/api/admin/categories` | admin |
-| PATCH | `/api/admin/categories/:id` | admin |
-| DELETE | `/api/admin/categories/:id` | admin |
-| POST | `/api/admin/categories/:id/subcategories` | admin |
-| PATCH | `/api/admin/subcategories/:id` | admin |
-| DELETE | `/api/admin/subcategories/:id` | admin |
-| GET | `/api/admin/orders` | admin |
-| GET | `/api/admin/orders/:id` | admin |
-| PATCH | `/api/admin/orders/:id/status` | admin |
-| PATCH | `/api/admin/orders/:id` | admin |
+| GET | `/api/v1/health` | guest |
+| POST | `/api/v1/auth/register` | guest |
+| POST | `/api/v1/auth/login` | guest |
+| POST | `/api/v1/auth/logout` | user |
+| GET | `/api/v1/me` | user |
+| PATCH | `/api/v1/me` | user |
+| GET | `/api/v1/items` | guest |
+| GET | `/api/v1/items/:id` | guest |
+| GET | `/api/v1/categories` | guest |
+| GET | `/api/v1/categories/:id/subcategories` | guest |
+| GET | `/api/v1/favorites` | user |
+| POST | `/api/v1/favorites/:item_id` | user |
+| DELETE | `/api/v1/favorites/:item_id` | user |
+| POST | `/api/v1/orders` | user |
+| GET | `/api/v1/orders` | user |
+| GET | `/api/v1/orders/:id` | user |
+| GET | `/api/v1/admin/items` | admin |
+| POST | `/api/v1/admin/items` | admin |
+| GET | `/api/v1/admin/items/:id` | admin |
+| PUT | `/api/v1/admin/items/:id` | admin |
+| PATCH | `/api/v1/admin/items/:id` | admin |
+| POST | `/api/v1/admin/items/:id/pictures` | admin |
+| DELETE | `/api/v1/admin/items/:item_id/pictures/:picture_id` | admin |
+| PATCH | `/api/v1/admin/items/:id/pictures/reorder` | admin |
+| GET | `/api/v1/admin/option-types` | admin |
+| POST | `/api/v1/admin/option-types` | admin |
+| PATCH | `/api/v1/admin/option-types/:id` | admin |
+| DELETE | `/api/v1/admin/option-types/:id` | admin |
+| POST | `/api/v1/admin/items/:id/options` | admin |
+| PATCH | `/api/v1/admin/item-options/:id` | admin |
+| DELETE | `/api/v1/admin/item-options/:id` | admin |
+| POST | `/api/v1/admin/categories` | admin |
+| PATCH | `/api/v1/admin/categories/:id` | admin |
+| DELETE | `/api/v1/admin/categories/:id` | admin |
+| POST | `/api/v1/admin/categories/:id/subcategories` | admin |
+| PATCH | `/api/v1/admin/subcategories/:id` | admin |
+| DELETE | `/api/v1/admin/subcategories/:id` | admin |
+| GET | `/api/v1/admin/orders` | admin |
+| GET | `/api/v1/admin/orders/:id` | admin |
+| PATCH | `/api/v1/admin/orders/:id/status` | admin |
+| PATCH | `/api/v1/admin/orders/:id` | admin |
 
 **Итого: 41 эндпоинт.**
 
@@ -1396,5 +1410,5 @@ COMMIT
 - Единый error-handler в `middleware/error.go` с обязательной трансляцией доменных ошибок в HTTP + формирование тела `{statusCode, url, message, date}`. Сохранять исходную ошибку в лог (structured slog), в клиент не раскрывать.
 - Helper для URL картинок в `repository/photo_url.go` или `pkg/` — превращает `object_key` в абсолютный URL.
 - Утилита генерации `articul` (последовательность через PostgreSQL `SEQUENCE`, префикс `CAT-`).
-- Rate-limiter middleware на Redis для `/api/auth/login` и `/api/auth/register`.
-- Email-уведомление админу при `POST /api/orders` — **отложено**, см. `memory/project_yulik3d.md`.
+- Rate-limiter middleware на Redis для `/api/v1/auth/login` и `/api/v1/auth/register`.
+- Email-уведомление админу при `POST /api/v1/orders` — **отложено**, см. `memory/project_yulik3d.md`.
