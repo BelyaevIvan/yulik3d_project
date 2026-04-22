@@ -50,3 +50,4 @@
 
 - **Структура БД** — [claude-instructions/db_description.md](claude-instructions/db_description.md). Полная схема PostgreSQL: таблицы, поля, типы, связи, каскады, ENUMы. При любых вопросах по структуре данных, моделям, миграциям — смотреть сюда.
 - **Структура репозитория** — [claude-instructions/project_structure.md](claude-instructions/project_structure.md). Дерево папок, принципы организации бэка (слои чистой архитектуры), стек, правила для `docs/`, `docker-compose`, `.env`. Перед началом работы с кодом — обязательно перечитывать.
+- **Спецификация API** — [claude-instructions/spec.md](claude-instructions/spec.md). Полный перечень HTTP-эндпоинтов бэкенда: назначение, доступ, вход/выход, алгоритм каждого метода. Единый формат ошибок, пагинация, соглашения. Источник истины для реализации хэндлеров и документации в `backend/docs/`.
