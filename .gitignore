@@ -1,3 +1,43 @@
-# CLAUDE.md
-# claude-instructions
+# Secrets
 .env
+.env.local
+.env.*.local
+
+# Go build artifacts
+backend/bin/
+backend/dist/
+*.exe
+*.test
+*.out
+vendor/
+
+# Swagger: swag init перегенерирует backend/internal/generated/docs/{docs.go,swagger.json,swagger.yaml}
+# docs.go содержит stub, закоммичен. swagger.json/swagger.yaml — чистый артефакт, игнорируем.
+backend/internal/generated/docs/swagger.json
+backend/internal/generated/docs/swagger.yaml
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Frontend (будет позже)
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Docker volumes (локальные)
+.volumes/
+postgres-data/
+redis-data/
+minio-data/
+
+# Logs
+*.log
+logs/
