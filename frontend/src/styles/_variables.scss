@@ -1,0 +1,224 @@
+// === COLORS ===
+$bg-primary: #0a0a2e;
+$bg-secondary: #0d0d3a;
+$bg-card: #141450;
+$bg-card-hover: #1a1a5e;
+$bg-input: #1a1a4a;
+$bg-header: #0a0a2e;
+$bg-footer: #0a0a2e;
+
+$accent-primary: #e84d2e;
+$accent-primary-hover: #ff5a38;
+$accent-secondary: #ff6b4a;
+
+$text-primary: #ffffff;
+$text-secondary: #a0a0c0;
+$text-muted: #6e6e8e;
+$text-link: #e84d2e;
+
+$border-color: #2a2a5a;
+$border-light: #3a3a6a;
+
+$price-bg: #141450;
+$tag-bg: #1e1e55;
+$tag-active-bg: #e84d2e;
+
+$success: #4caf50;
+$error: #f44336;
+$warning: #ff9800;
+
+// === TYPOGRAPHY ===
+$font-primary: 'Nunito', 'Segoe UI', sans-serif;
+$font-heading: 'Montserrat', 'Arial Black', sans-serif;
+$font-mono: 'JetBrains Mono', monospace;
+
+$font-size-xs: 0.75rem;
+$font-size-sm: 0.875rem;
+$font-size-base: 1rem;
+$font-size-md: 1.125rem;
+$font-size-lg: 1.25rem;
+$font-size-xl: 1.5rem;
+$font-size-2xl: 2rem;
+$font-size-3xl: 2.5rem;
+
+$font-weight-normal: 400;
+$font-weight-medium: 500;
+$font-weight-semibold: 600;
+$font-weight-bold: 700;
+$font-weight-black: 900;
+
+$line-height-tight: 1.2;
+$line-height-normal: 1.5;
+$line-height-relaxed: 1.75;
+
+// === SPACING ===
+$spacing-xs: 0.25rem;
+$spacing-sm: 0.5rem;
+$spacing-md: 1rem;
+$spacing-lg: 1.5rem;
+$spacing-xl: 2rem;
+$spacing-2xl: 3rem;
+$spacing-3xl: 4rem;
+
+// === LAYOUT ===
+$max-width: 1420px;
+$header-height: 80px;
+$footer-min-height: 119px;
+$border-radius-sm: 4px;
+$border-radius-md: 8px;
+$border-radius-lg: 12px;
+$border-radius-xl: 16px;
+$border-radius-round: 50%;
+
+// === BREAKPOINTS ===
+$breakpoint-sm: 576px;
+$breakpoint-md: 768px;
+$breakpoint-lg: 992px;
+$breakpoint-xl: 1200px;
+$breakpoint-xxl: 1440px;
+
+// === TRANSITIONS ===
+$transition-fast: 0.15s ease;
+$transition-normal: 0.3s ease;
+$transition-slow: 0.5s ease;
+
+// === SHADOWS ===
+$shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+$shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+$shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+$shadow-card: 0 4px 20px rgba(0, 0, 0, 0.3);
+
+// === MIXINS ===
+@mixin container {
+  max-width: $max-width;
+  margin: 0 auto;
+  padding: 0 $spacing-xl;
+
+  @media (max-width: $breakpoint-md) {
+    padding: 0 $spacing-md;
+  }
+}
+
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@mixin card-style {
+  background: $bg-card;
+  border-radius: $border-radius-lg;
+  border: 1px solid $border-color;
+  transition: all $transition-normal;
+
+  &:hover {
+    background: $bg-card-hover;
+    border-color: $border-light;
+    transform: translateY(-2px);
+    box-shadow: $shadow-card;
+  }
+}
+
+@mixin button-primary {
+  display: inline-block;
+  padding: $spacing-md $spacing-lg;
+  background: $accent-primary;
+  color: $text-primary;
+  border: none;
+  border-radius: $border-radius-lg;
+  font-family: $font-heading;
+  font-size: $font-size-base;
+  font-weight: $font-weight-bold;
+  text-align: center;
+  cursor: pointer;
+  transition: all $transition-normal;
+  text-decoration: none;
+
+  &:hover:not(:disabled) {
+    background: $accent-primary-hover;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba($accent-primary, 0.4);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+@mixin button-outline {
+  display: inline-block;
+  padding: $spacing-md $spacing-lg;
+  background: transparent;
+  color: $accent-primary;
+  border: 2px solid $accent-primary;
+  border-radius: $border-radius-lg;
+  font-family: $font-heading;
+  font-size: $font-size-base;
+  font-weight: $font-weight-bold;
+  text-align: center;
+  cursor: pointer;
+  transition: all $transition-normal;
+  text-decoration: none;
+
+  &:hover {
+    background: rgba($accent-primary, 0.1);
+    transform: translateY(-1px);
+  }
+}
+
+@mixin button-ghost {
+  display: inline-block;
+  padding: $spacing-sm $spacing-md;
+  background: $bg-card;
+  color: $text-primary;
+  border: 1px solid $border-color;
+  border-radius: $border-radius-md;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  cursor: pointer;
+  transition: all $transition-normal;
+
+  &:hover {
+    background: $bg-card-hover;
+    border-color: $border-light;
+  }
+}
+
+@mixin text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@mixin input-field {
+  display: block;
+  width: 100%;
+  padding: $spacing-md;
+  background: $bg-input;
+  color: $text-primary;
+  border: 1px solid $border-color;
+  border-radius: $border-radius-md;
+  font-family: $font-primary;
+  font-size: $font-size-base;
+  transition: border-color $transition-normal;
+
+  &::placeholder {
+    color: $text-muted;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: $accent-primary;
+  }
+}

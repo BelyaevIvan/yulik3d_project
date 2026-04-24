@@ -1,0 +1,41 @@
+.error-page {
+  @include container;
+  padding-top: $spacing-3xl;
+  text-align: center;
+
+  &__code {
+    font-family: $font-heading;
+    font-size: 120px;
+    font-weight: $font-weight-black;
+    color: $accent-primary;
+    line-height: 1;
+    margin-bottom: $spacing-md;
+
+    @media (max-width: $breakpoint-sm) { font-size: 80px; }
+  }
+
+  &__title {
+    font-size: $font-size-2xl;
+    margin-bottom: $spacing-md;
+  }
+
+  &__text {
+    color: $text-secondary;
+    max-width: 480px;
+    margin: 0 auto $spacing-xl;
+  }
+
+  &__actions {
+    display: flex;
+    gap: $spacing-md;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  &__btn {
+    @include button-primary;
+    padding: $spacing-md $spacing-xl;
+  }
+
+  &__btn--ghost { @include button-outline; padding: $spacing-md $spacing-xl; }
+}

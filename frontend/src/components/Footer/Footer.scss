@@ -1,0 +1,106 @@
+.footer {
+  background: $bg-footer;
+  border-top: 1px solid $border-color;
+  margin-top: auto;
+
+  &__inner {
+    @include container;
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: $spacing-xl;
+    padding-top: $spacing-2xl;
+    padding-bottom: $spacing-xl;
+
+    @media (max-width: $breakpoint-lg) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    @media (max-width: $breakpoint-sm) {
+      grid-template-columns: 1fr;
+      gap: $spacing-lg;
+    }
+  }
+
+  &__brand {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+
+    @media (max-width: $breakpoint-lg) {
+      grid-column: 1 / -1;
+    }
+  }
+
+  &__logo {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+  }
+
+  &__brand-text {
+    font-family: $font-heading;
+    font-weight: $font-weight-bold;
+    font-size: $font-size-md;
+  }
+
+  &__about {
+    color: $text-secondary;
+    font-size: $font-size-sm;
+    max-width: 360px;
+  }
+
+  &__col {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
+
+  &__heading {
+    font-family: $font-heading;
+    font-size: $font-size-base;
+    font-weight: $font-weight-bold;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__link {
+    color: $text-secondary;
+    font-size: $font-size-sm;
+    transition: color $transition-normal;
+    &:hover { color: $accent-primary; }
+  }
+
+  &__socials {
+    display: flex;
+    gap: $spacing-sm;
+    margin-top: $spacing-sm;
+  }
+
+  &__social {
+    width: 36px;
+    height: 36px;
+    border-radius: $border-radius-round;
+    background: $bg-card;
+    border: 1px solid $border-color;
+    color: $text-primary;
+    @include flex-center;
+    font-family: $font-heading;
+    font-weight: $font-weight-bold;
+    font-size: $font-size-xs;
+    letter-spacing: 0.5px;
+    transition: all $transition-normal;
+    &:hover {
+      background: $accent-primary;
+      border-color: $accent-primary;
+      transform: translateY(-2px);
+    }
+  }
+
+  &__bottom {
+    @include container;
+    border-top: 1px solid $border-color;
+    padding-top: $spacing-md;
+    padding-bottom: $spacing-md;
+    text-align: center;
+    color: $text-muted;
+    font-size: $font-size-xs;
+  }
+}

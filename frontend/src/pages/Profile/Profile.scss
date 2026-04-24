@@ -1,0 +1,65 @@
+.profile {
+  @include container;
+  padding-top: $spacing-xl;
+
+  &__title {
+    font-size: $font-size-2xl;
+    font-family: $font-heading;
+    margin-bottom: $spacing-lg;
+  }
+
+  &__layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: $spacing-xl;
+
+    @media (max-width: $breakpoint-md) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__card {
+    background: $bg-secondary;
+    border: 1px solid $border-color;
+    border-radius: $border-radius-lg;
+    padding: $spacing-xl;
+  }
+
+  &__heading {
+    font-family: $font-heading;
+    font-size: $font-size-lg;
+    margin-bottom: $spacing-lg;
+  }
+
+  &__field { margin-bottom: $spacing-md; }
+
+  &__label {
+    display: block;
+    font-size: $font-size-sm;
+    color: $text-secondary;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__input {
+    @include input-field;
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+  }
+
+  &__hint {
+    color: $text-muted;
+    font-size: $font-size-xs;
+    margin-top: $spacing-xs;
+    display: block;
+  }
+
+  &__submit {
+    @include button-primary;
+    width: 100%;
+    margin-top: $spacing-md;
+
+    &--secondary {
+      background: $bg-card;
+      &:hover:not(:disabled) { background: $bg-card-hover; }
+    }
+  }
+}
