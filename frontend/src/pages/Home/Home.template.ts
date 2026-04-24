@@ -4,7 +4,7 @@ export const homeTemplate = `
   <!-- Hero-карточки (статика для дизайна) -->
   <section class="home__hero">
     <a href="/figurines" data-link class="home__hero-card home__hero-card--main">
-      <div class="home__hero-bg" style="background-image: url('https://picsum.photos/seed/yulik3d-figurine/1200/600')"></div>
+      <div class="home__hero-bg" style="background-image: url('/hero-figurines.jpg')"></div>
       <div class="home__hero-content">
         <span class="home__hero-tag">Новинки</span>
         <h2 class="home__hero-title">Фигурки на заказ</h2>
@@ -15,14 +15,14 @@ export const homeTemplate = `
 
     <div class="home__hero-side">
       <a href="/models" data-link class="home__hero-card">
-        <div class="home__hero-bg" style="background-image: url('https://picsum.photos/seed/yulik3d-models/600/400')"></div>
+        <div class="home__hero-bg" style="background-image: url('/hero-models.jpg')"></div>
         <div class="home__hero-content">
           <h3 class="home__hero-subtitle">Макеты и декор</h3>
           <span class="home__hero-cta">Перейти →</span>
         </div>
       </a>
       <a href="/figurines?has_sale=true" data-link class="home__hero-card home__hero-card--sale">
-        <div class="home__hero-bg" style="background-image: url('https://picsum.photos/seed/yulik3d-sale/600/400')"></div>
+        <div class="home__hero-bg" style="background-image: url('/hero-sale.jpg')"></div>
         <div class="home__hero-content">
           <span class="home__hero-tag home__hero-tag--accent">Скидки</span>
           <h3 class="home__hero-subtitle">Товары со скидкой</h3>
