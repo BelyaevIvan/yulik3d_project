@@ -1,0 +1,70 @@
+// Общий стиль для login/register
+.auth {
+  @include container;
+  padding-top: $spacing-2xl;
+  display: flex;
+  justify-content: center;
+
+  &__card {
+    width: 100%;
+    max-width: 460px;
+    background: $bg-secondary;
+    border: 1px solid $border-color;
+    border-radius: $border-radius-lg;
+    padding: $spacing-xl;
+  }
+
+  &__title {
+    font-size: $font-size-2xl;
+    font-family: $font-heading;
+    margin-bottom: $spacing-sm;
+    text-align: center;
+  }
+
+  &__sub {
+    text-align: center;
+    color: $text-secondary;
+    font-size: $font-size-sm;
+    margin-bottom: $spacing-xl;
+  }
+
+  &__field {
+    margin-bottom: $spacing-md;
+  }
+
+  &__label {
+    display: block;
+    font-size: $font-size-sm;
+    color: $text-secondary;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__input {
+    @include input-field;
+  }
+
+  &__error {
+    color: $error;
+    font-size: $font-size-sm;
+    margin-bottom: $spacing-md;
+    padding: $spacing-sm $spacing-md;
+    background: rgba($error, 0.1);
+    border: 1px solid rgba($error, 0.3);
+    border-radius: $border-radius-md;
+  }
+
+  &__submit {
+    @include button-primary;
+    width: 100%;
+    margin-top: $spacing-md;
+  }
+
+  &__alt {
+    text-align: center;
+    margin-top: $spacing-lg;
+    font-size: $font-size-sm;
+    color: $text-secondary;
+
+    a { color: $accent-primary; font-weight: $font-weight-semibold; }
+  }
+}

@@ -1,0 +1,94 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800;900&family=Nunito:wght@400;500;600;700&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  font-family: $font-primary;
+  font-size: $font-size-base;
+  line-height: $line-height-normal;
+  background: $bg-primary;
+  color: $text-primary;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: inherit;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+ul, ol {
+  list-style: none;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: $font-heading;
+  font-weight: $font-weight-bold;
+  line-height: $line-height-tight;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track { background: $bg-secondary; }
+::-webkit-scrollbar-thumb {
+  background: $border-light;
+  border-radius: 4px;
+  &:hover { background: $accent-primary; }
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.page-content {
+  flex: 1;
+  padding-top: $header-height;
+  padding-bottom: $spacing-3xl;
+  width: 100%;
+}
+
+// Markdown content (for product descriptions)
+.md-content {
+  color: $text-primary;
+  line-height: $line-height-relaxed;
+
+  p { margin-bottom: $spacing-sm; }
+  strong { color: $text-primary; font-weight: $font-weight-bold; }
+  em { color: $text-secondary; font-style: italic; }
+  ul, ol { padding-left: $spacing-lg; margin: $spacing-sm 0; }
+  li { margin-bottom: $spacing-xs; }
+  a { color: $accent-primary; text-decoration: underline; }
+  code {
+    background: $bg-input;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: $font-mono;
+    font-size: 0.9em;
+  }
+}

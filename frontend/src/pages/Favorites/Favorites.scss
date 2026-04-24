@@ -1,0 +1,18 @@
+.favorites {
+  @include container;
+  padding-top: $spacing-xl;
+
+  &__title {
+    font-size: $font-size-2xl;
+    font-family: $font-heading;
+    margin-bottom: $spacing-lg;
+  }
+
+  &__empty {
+    text-align: center;
+    color: $text-secondary;
+    padding: $spacing-2xl;
+
+    a { color: $accent-primary; font-weight: $font-weight-semibold; }
+  }
+}
