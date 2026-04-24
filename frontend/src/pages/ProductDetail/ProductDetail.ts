@@ -5,6 +5,7 @@ import { favoritesApi } from '@/api/favorites';
 import { ApiError } from '@/api/client';
 import { cartStore } from '@/store/cart';
 import { authStore } from '@/store/auth';
+import { favoritesStore } from '@/store/favorites';
 import { router } from '@/router/router';
 import { toast } from '@/components/Toast/Toast';
 import { renderMarkdown } from '@/utils/markdown';
@@ -97,28 +98,35 @@ export class ProductDetailPage {
       toast.success('Товар добавлен в корзину');
     });
 
-    // Избранное
+    // Избранное — синхронизуем начальное состояние со стором
     const favBtn = this.root.querySelector<HTMLButtonElement>('#toggleFav');
-    favBtn?.addEventListener('click', async () => {
-      if (!authStore.isAuthed()) {
-        toast.info('Войдите, чтобы добавлять в избранное');
-        router.navigate('/login?next=' + encodeURIComponent(`/product/${this.id}`));
-        return;
-      }
-      try {
-        if (favBtn.classList.contains('product__fav--active')) {
-          await favoritesApi.remove(it.id);
-          favBtn.classList.remove('product__fav--active');
-          toast.info('Удалено из избранного');
-        } else {
-          await favoritesApi.add(it.id);
-          favBtn.classList.add('product__fav--active');
-          toast.success('Добавлено в избранное');
+    if (favBtn) {
+      const updateActive = () => favBtn.classList.toggle('product__fav--active', favoritesStore.has(it.id));
+      updateActive();
+      // Подписываемся, чтобы реагировать на внешние изменения
+      favoritesStore.subscribe(updateActive);
+
+      favBtn.addEventListener('click', async () => {
+        if (!authStore.isAuthed()) {
+          toast.info('Войдите, чтобы добавлять в избранное');
+          router.navigate('/login?next=' + encodeURIComponent(`/product/${this.id}`));
+          return;
         }
-      } catch (e) {
-        if (e instanceof ApiError) toast.error(e.message);
-      }
-    });
+        try {
+          if (favoritesStore.has(it.id)) {
+            await favoritesApi.remove(it.id);
+            favoritesStore.remove(it.id);
+            toast.info('Удалено из избранного');
+          } else {
+            await favoritesApi.add(it.id);
+            favoritesStore.add(it.id);
+            toast.success('Добавлено в избранное');
+          }
+        } catch (e) {
+          if (e instanceof ApiError) toast.error(e.message);
+        }
+      });
+    }
   }
 
   private updatePrice(): void {

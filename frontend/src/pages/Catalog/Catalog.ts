@@ -2,6 +2,7 @@ import { renderTemplate } from '@/utils/template';
 import { catalogTemplate } from './Catalog.template';
 import { catalogApi } from '@/api/catalog';
 import { productCardTemplate } from '@/components/ProductCard/ProductCard.template';
+import { syncFavoriteButtons } from '@/utils/favoriteButtons';
 import { router } from '@/router/router';
 import type { CategoryType, CategoryDTO, ItemCardDTO } from '@/api/types';
 import './Catalog.scss';
@@ -10,15 +11,18 @@ const PAGE_SIZE = 20;
 
 export class CatalogPage {
   private categories: CategoryDTO[] = [];
+  /**
+   * @param type — 'figure' / 'other' / null. null = глобальный поиск без фильтра по типу.
+   */
   constructor(
     private root: HTMLElement,
-    private type: CategoryType,
+    private type: CategoryType | null,
     private query: URLSearchParams,
   ) {}
 
   async render(): Promise<void> {
-    const baseUrl = this.type === 'figure' ? '/figurines' : '/models';
-    const rootLabel = this.type === 'figure' ? 'Фигурки' : 'Макеты';
+    const baseUrl = this.type === 'figure' ? '/figurines' : this.type === 'other' ? '/models' : '/search';
+    const rootLabel = this.type === 'figure' ? 'Фигурки' : this.type === 'other' ? 'Макеты' : 'Поиск';
     const categoryId = this.query.get('category_id') || '';
     const subcategoryId = this.query.get('subcategory_id') || '';
     const q = this.query.get('q') || '';
@@ -26,8 +30,9 @@ export class CatalogPage {
     const hasSale = this.query.get('has_sale') === 'true' ? true : undefined;
     const offset = parseInt(this.query.get('offset') || '0', 10) || 0;
 
-    // Загружаем категории дерева для сайдбара
-    if (this.categories.length === 0) {
+    // Загружаем категории дерева для сайдбара (только для конкретного типа;
+    // для глобального поиска (this.type === null) — без сайдбара).
+    if (this.type !== null && this.categories.length === 0) {
       try {
         const cats = await catalogApi.listCategories(this.type, true);
         this.categories = cats.categories;
@@ -42,7 +47,7 @@ export class CatalogPage {
 
     try {
       const res = await catalogApi.listItems({
-        category_type: this.type,
+        category_type: this.type ?? undefined,
         category_id: categoryId || undefined,
         subcategory_id: subcategoryId || undefined,
         q: q || undefined,
@@ -101,6 +106,7 @@ export class CatalogPage {
       });
 
       this.bindEvents(baseUrl, offset);
+      syncFavoriteButtons(this.root);
     } catch (e) {
       console.error('catalog:', e);
       this.root.innerHTML = renderTemplate(catalogTemplate, {

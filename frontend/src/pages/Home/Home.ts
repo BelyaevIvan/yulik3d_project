@@ -2,6 +2,7 @@ import { renderTemplate } from '@/utils/template';
 import { homeTemplate } from './Home.template';
 import { catalogApi } from '@/api/catalog';
 import { productCardTemplate } from '@/components/ProductCard/ProductCard.template';
+import { syncFavoriteButtons } from '@/utils/favoriteButtons';
 import type { ItemCardDTO } from '@/api/types';
 import './Home.scss';
 
@@ -16,9 +17,10 @@ export class HomePage {
     });
 
     try {
+      // Лимит 5 — один ряд на широком экране. На больше — кнопка «Все ...»
       const [fig, mod] = await Promise.all([
-        catalogApi.listItems({ category_type: 'figure', limit: 8 }),
-        catalogApi.listItems({ category_type: 'other', limit: 8 }),
+        catalogApi.listItems({ category_type: 'figure', limit: 5 }),
+        catalogApi.listItems({ category_type: 'other', limit: 5 }),
       ]);
       this.root.innerHTML = renderTemplate(homeTemplate, {
         loadingFigurines: false, loadingModels: false,
@@ -26,6 +28,7 @@ export class HomePage {
         figurinesHtml: this.cards(fig.items),
         modelsHtml: this.cards(mod.items),
       });
+      syncFavoriteButtons(this.root);
     } catch (e) {
       console.error('home:', e);
       this.root.innerHTML = renderTemplate(homeTemplate, {

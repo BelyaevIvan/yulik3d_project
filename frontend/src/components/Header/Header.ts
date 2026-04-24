@@ -89,7 +89,8 @@ export class Header {
       const q = (input?.value || '').trim();
       if (!q) return;
       sug?.classList.remove('header__suggestions--visible');
-      router.navigate('/figurines?q=' + encodeURIComponent(q));
+      // Глобальный поиск — без фильтра по типу (фигурки + макеты)
+      router.navigate('/search?q=' + encodeURIComponent(q));
     };
 
     btn?.addEventListener('click', submit);
@@ -153,6 +154,14 @@ export class Header {
       await authStore.logout();
       toast.success('Вы вышли из аккаунта');
       router.navigate('/');
+    });
+
+    // «Войти» — передаём текущий путь как next, чтобы вернуть после логина
+    this.root.querySelector('#headerLogin')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      const cur = window.location.pathname + window.location.search;
+      const next = cur === '/login' || cur === '/register' ? '/' : cur;
+      router.navigate('/login?next=' + encodeURIComponent(next));
     });
   }
 

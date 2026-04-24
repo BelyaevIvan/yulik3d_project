@@ -1,28 +1,44 @@
 .product-card {
   @include card-style;
+  position: relative;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   text-decoration: none;
   color: inherit;
   cursor: pointer;
-  position: relative;
+  background: $bg-card;
 
-  &--hidden {
-    opacity: 0.7;
+  &--hidden { opacity: 0.7; }
+
+  &__link {
+    display: flex;
+    flex-direction: column;
+    text-decoration: none;
+    color: inherit;
+    flex: 1;
   }
 
+  // Все карточки — квадратная зона картинки, центр-кроп.
+  // padding-bottom: 100% гарантирует квадрат независимо от flex-родителя,
+  // а absolute-img всегда заполнит контейнер.
   &__image-wrap {
     position: relative;
-    aspect-ratio: 1 / 1;
+    width: 100%;
+    height: 0;
+    padding-bottom: 100%;
     background: $bg-input;
     overflow: hidden;
   }
 
   &__image {
-    width: 100%;
-    height: 100%;
+    position: absolute;
+    inset: 0;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none;
     object-fit: cover;
+    display: block;
     transition: transform $transition-slow;
 
     &--placeholder {
@@ -31,7 +47,7 @@
     }
   }
 
-  &:hover &__image {
+  &:hover &__image:not(.product-card__image--placeholder) {
     transform: scale(1.05);
   }
 
@@ -43,15 +59,19 @@
     font-size: $font-size-xs;
     font-weight: $font-weight-bold;
     color: $text-primary;
+    z-index: 2;
 
     &--sale {
       right: $spacing-sm;
       background: $accent-primary;
     }
 
+    // hidden — по центру сверху, чтобы не пересекаться с кнопкой ♥ (слева) и sale (справа)
     &--hidden {
-      left: $spacing-sm;
+      left: 50%;
+      transform: translateX(-50%);
       background: $error;
+      white-space: nowrap;
     }
   }
 
@@ -59,47 +79,118 @@
     padding: $spacing-md;
     display: flex;
     flex-direction: column;
-    gap: $spacing-xs;
+    gap: 4px;
     flex: 1;
   }
 
-  &__meta {
-    min-height: 18px;
-    font-size: $font-size-xs;
+  // Категория — мелкая, серая, прописными
+  &__category {
+    font-size: 11px;
     color: $text-muted;
-  }
-
-  &__category { text-transform: uppercase; letter-spacing: 0.5px; }
-
-  &__name {
-    font-size: $font-size-base;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
     font-weight: $font-weight-semibold;
-    color: $text-primary;
-    line-height: $line-height-tight;
-    flex: 1;
+    margin-bottom: 2px;
   }
 
-  &__price-row {
-    margin-top: $spacing-sm;
-    display: flex;
-    align-items: baseline;
-    gap: $spacing-sm;
+  // Название — заметнее категории
+  &__name {
+    font-size: $font-size-md;
+    font-weight: $font-weight-bold;
+    color: $text-primary;
+    line-height: 1.2;
+    flex: 1;
+    margin: 4px 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  // === ЦЕНА — копия дизайна страницы товара ===
+  &__price-block {
+    margin-top: auto !important;
+    padding-top: 12px !important;
+    display: flex !important;
+    align-items: baseline !important;
+    gap: 10px !important;
+    flex-wrap: wrap !important;
   }
 
   &__price {
-    font-family: $font-heading;
-    font-size: $font-size-md;
-    font-weight: $font-weight-bold;
-    color: $accent-primary;
+    font-family: $font-heading !important;
+    font-size: 22px !important;
+    font-weight: 700 !important;
+    color: $accent-primary !important;
+    line-height: 1 !important;
   }
 
   &__price-old {
-    font-size: $font-size-sm;
-    color: $text-muted;
-    text-decoration: line-through;
+    font-size: 14px !important;
+    color: $text-muted !important;
+    text-decoration: line-through !important;
+    line-height: 1 !important;
   }
+
+  // === Кнопка избранного — большая, видная, с заливкой при активе ===
+  // !important — чтобы железно переопределить любые остатки старых стилей
+  &__fav {
+    position: absolute !important;
+    top: 12px !important;
+    left: 12px !important;
+    width: 48px !important;
+    height: 48px !important;
+    background: rgba(10, 10, 46, 0.85) !important;
+    color: #ffffff !important;
+    border-radius: 50% !important;
+    border: 2px solid rgba(255, 255, 255, 0.25) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    transition: transform 0.15s ease, background 0.2s ease, border-color 0.2s ease, color 0.2s ease !important;
+    z-index: 10 !important;
+    padding: 0 !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4) !important;
+
+    svg {
+      width: 24px !important;
+      height: 24px !important;
+      fill: none !important;
+      stroke: currentColor !important;
+      stroke-width: 2 !important;
+      transition: fill 0.2s ease !important;
+    }
+
+    &:hover {
+      transform: scale(1.1) !important;
+      border-color: $accent-primary !important;
+      color: $accent-primary !important;
+      background: rgba(10, 10, 46, 0.95) !important;
+    }
+
+    // Активное состояние: красная кнопка + залитое белое сердце
+    &--active {
+      background: $accent-primary !important;
+      border-color: $accent-primary !important;
+      color: #ffffff !important;
+
+      svg {
+        fill: #ffffff !important;
+        stroke: #ffffff !important;
+      }
+
+      &:hover {
+        background: $accent-primary-hover !important;
+        color: #ffffff !important;
+        border-color: $accent-primary-hover !important;
+      }
+    }
+  }
+
 }
 
+// Универсальная сетка (для каталога с фильтром — там много колонок)
 .product-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -108,5 +199,28 @@
   @media (max-width: $breakpoint-sm) {
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: $spacing-md;
+  }
+}
+
+// Сетка для главной — фиксированные 4 колонки (на десктопе), 5 на больших экранах,
+// меньше на планшетах/мобиле. Всегда выровнено в ряд.
+.product-grid--row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: $spacing-lg;
+
+  @media (min-width: $breakpoint-xl) {
+    grid-template-columns: repeat(5, 1fr);
+  }
+  @media (max-width: $breakpoint-lg) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  @media (max-width: $breakpoint-md) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: $spacing-md;
+  }
+  @media (max-width: $breakpoint-sm) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: $spacing-sm;
   }
 }

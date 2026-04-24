@@ -36,9 +36,12 @@
     overflow: hidden;
     display: block;
     color: $text-primary;
+    // Fallback-фон, если изображение не загрузится
+    background: linear-gradient(135deg, #1e1b4b 0%, #4338ca 50%, #e84d2e 100%);
 
     &--main {
       min-height: 460px;
+      background: linear-gradient(135deg, #0a0a2e 0%, #1e1b4b 40%, #e84d2e 100%);
 
       @media (max-width: $breakpoint-md) { min-height: 320px; }
     }
@@ -50,12 +53,12 @@
     background-size: cover;
     background-position: center;
     transition: transform $transition-slow;
-    opacity: 0.55;
+    opacity: 0.85;
   }
 
   &__hero-card:hover &__hero-bg {
     transform: scale(1.05);
-    opacity: 0.7;
+    opacity: 1;
   }
 
   &__hero-content {
@@ -65,7 +68,8 @@
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
-    background: linear-gradient(180deg, transparent 0%, rgba($bg-primary, 0.85) 100%);
+    // Лёгкий градиент только в нижней половине — для читаемости текста
+    background: linear-gradient(180deg, rgba($bg-primary, 0) 40%, rgba($bg-primary, 0.9) 100%);
   }
 
   &__hero-tag {

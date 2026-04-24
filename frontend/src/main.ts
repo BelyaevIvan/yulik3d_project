@@ -1,6 +1,9 @@
 import './styles/global.scss';
+import './components/ProductCard/ProductCard.scss';
 import { router } from './router/router';
 import { authStore } from './store/auth';
+import { favoritesStore } from './store/favorites';
+import { initFavoriteButtons } from './utils/favoriteButtons';
 import { Header } from './components/Header/Header';
 import { Footer } from './components/Footer/Footer';
 
@@ -48,6 +51,10 @@ class App {
   async start(): Promise<void> {
     // 1. Дёрнуть /me, чтобы знать кто авторизован
     await authStore.init();
+    // 1а. Загрузить избранное (если юзер залогинен — стор подгрузит)
+    if (authStore.isAuthed()) await favoritesStore.reload();
+    // 1б. Глобальный обработчик ♥-кнопок в карточках
+    initFavoriteButtons();
     // 2. Подгрузить категории для шапки
     await this.header.init();
     this.footer.render();
@@ -63,6 +70,8 @@ class App {
 
     router.addRoute('/figurines', (_, q) => { set('figurines'); new CatalogPage(this.contentEl, 'figure', q).render(); });
     router.addRoute('/models', (_, q) => { set('models'); new CatalogPage(this.contentEl, 'other', q).render(); });
+    // Глобальный поиск — без фильтра по типу
+    router.addRoute('/search', (_, q) => { set(''); new CatalogPage(this.contentEl, null, q).render(); });
 
     router.addRoute('/product/:id', (p) => { set(''); new ProductDetailPage(this.contentEl, p.id).render(); });
 

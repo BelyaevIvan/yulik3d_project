@@ -1,8 +1,10 @@
 // Корзина живёт во фронте (localStorage). См. memory: «корзина — frontend-only».
 // Каждый item в корзине — это (item_id + выбранные option_ids).
 // Уникальность: одна и та же комбинация увеличивает quantity, разная — отдельная позиция.
+// При logout корзина очищается (гость не должен видеть содержимое прошлого юзера).
 
 import type { ItemDetailDTO } from '@/api/types';
+import { authStore } from './auth';
 
 export interface CartLine {
   item_id: string;
@@ -23,11 +25,21 @@ type Listener = (lines: CartLine[]) => void;
 class CartStore {
   private lines: CartLine[] = [];
   private listeners = new Set<Listener>();
+  private prevUserID: string | null = null;
 
   constructor() {
     this.load();
     window.addEventListener('storage', (e) => {
       if (e.key === KEY) { this.load(); this.emit(); }
+    });
+    // Очищаем корзину при logout (был user → стал null).
+    authStore.subscribe((u) => {
+      const newID = u?.id || null;
+      if (this.prevUserID && !newID) {
+        // Logout — чистим, чтобы новый гость или другой юзер не увидел чужую корзину
+        this.clear();
+      }
+      this.prevUserID = newID;
     });
   }
 
