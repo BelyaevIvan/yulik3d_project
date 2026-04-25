@@ -4,6 +4,7 @@ import { authStore } from '@/store/auth';
 import { router } from '@/router/router';
 import { renderTemplate } from '@/utils/template';
 import { toast } from '@/components/Toast/Toast';
+import { setPageMeta, clearProductJsonLd } from '@/utils/seo';
 import './Auth.scss';
 
 const tpl = `
@@ -34,6 +35,8 @@ export class LoginPage {
   constructor(private root: HTMLElement, private query: URLSearchParams) {}
 
   render(): void {
+    setPageMeta({ title: 'Вход', noindex: true });
+    clearProductJsonLd();
     this.root.innerHTML = renderTemplate(tpl, {});
     const form = this.root.querySelector<HTMLFormElement>('#loginForm');
     const err = this.root.querySelector<HTMLElement>('#loginErr');

@@ -4,6 +4,7 @@ import { authStore } from '@/store/auth';
 import { router } from '@/router/router';
 import { renderTemplate } from '@/utils/template';
 import { toast } from '@/components/Toast/Toast';
+import { setPageMeta, clearProductJsonLd } from '@/utils/seo';
 import './Profile.scss';
 
 const tpl = `
@@ -62,6 +63,8 @@ export class ProfilePage {
       router.navigate('/login?next=/profile');
       return;
     }
+    setPageMeta({ title: 'Профиль', noindex: true });
+    clearProductJsonLd();
     const u = authStore.getUser()!;
     this.root.innerHTML = renderTemplate(tpl, {
       email: u.email,

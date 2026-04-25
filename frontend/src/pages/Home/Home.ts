@@ -3,6 +3,7 @@ import { homeTemplate } from './Home.template';
 import { catalogApi } from '@/api/catalog';
 import { productCardTemplate } from '@/components/ProductCard/ProductCard.template';
 import { syncFavoriteButtons } from '@/utils/favoriteButtons';
+import { setPageMeta, clearProductJsonLd } from '@/utils/seo';
 import type { ItemCardDTO } from '@/api/types';
 import './Home.scss';
 
@@ -10,6 +11,11 @@ export class HomePage {
   constructor(private root: HTMLElement) {}
 
   async render(): Promise<void> {
+    setPageMeta({
+      description: 'Магазин 3D-печати YULIK3D. Фигурки персонажей из игр, фильмов и аниме на заказ. Декор, вазы, аксессуары. Полимерная смола, ручная работа, доставка по России.',
+    });
+    clearProductJsonLd();
+
     this.root.innerHTML = renderTemplate(homeTemplate, {
       loadingFigurines: true, loadingModels: true,
       figurines: [], models: [],

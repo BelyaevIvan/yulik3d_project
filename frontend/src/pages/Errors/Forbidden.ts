@@ -1,8 +1,11 @@
+import { setPageMeta, clearProductJsonLd } from '@/utils/seo';
 import './Errors.scss';
 
 export class ForbiddenPage {
   constructor(private root: HTMLElement) {}
   render(): void {
+    setPageMeta({ title: 'Нет доступа', noindex: true });
+    clearProductJsonLd();
     this.root.innerHTML = `
       <div class="error-page">
         <div class="error-page__code">403</div>
