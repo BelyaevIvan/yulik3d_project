@@ -1,0 +1,137 @@
+.catalog {
+  @include container;
+  padding-top: $spacing-lg;
+
+  &__title {
+    font-size: $font-size-3xl;
+    margin-bottom: $spacing-lg;
+
+    @media (max-width: $breakpoint-md) { font-size: $font-size-2xl; }
+  }
+
+  &__layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: $spacing-xl;
+
+    @media (max-width: $breakpoint-md) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__sidebar {
+    background: $bg-secondary;
+    border: 1px solid $border-color;
+    border-radius: $border-radius-lg;
+    padding: $spacing-lg;
+    height: fit-content;
+    position: sticky;
+    top: calc(#{$header-height} + #{$spacing-lg});
+
+    @media (max-width: $breakpoint-md) {
+      position: static;
+    }
+
+    &-title {
+      font-family: $font-heading;
+      font-size: $font-size-base;
+      margin-bottom: $spacing-md;
+      padding-bottom: $spacing-sm;
+      border-bottom: 1px solid $border-color;
+    }
+
+    &-link {
+      display: block;
+      padding: $spacing-xs $spacing-sm;
+      color: $text-secondary;
+      font-size: $font-size-sm;
+      border-radius: $border-radius-sm;
+      transition: all $transition-fast;
+
+      &:hover { color: $accent-primary; background: $bg-card; }
+      &--active { color: $accent-primary; font-weight: $font-weight-semibold; }
+    }
+
+    &-group { margin-top: $spacing-md; }
+
+    &-cat {
+      display: block;
+      padding: $spacing-xs $spacing-sm;
+      font-family: $font-heading;
+      font-weight: $font-weight-bold;
+      color: $text-primary;
+      transition: color $transition-fast;
+      &:hover, &--active { color: $accent-primary; }
+    }
+
+    &-sub {
+      display: block;
+      padding: $spacing-xs $spacing-md $spacing-xs $spacing-lg;
+      color: $text-secondary;
+      font-size: $font-size-sm;
+      &:hover { color: $accent-primary; }
+      &--active { color: $accent-primary; font-weight: $font-weight-semibold; }
+    }
+  }
+
+  &__toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-lg;
+    gap: $spacing-md;
+    flex-wrap: wrap;
+  }
+
+  &__count {
+    color: $text-secondary;
+    font-size: $font-size-sm;
+  }
+
+  &__sort {
+    @include input-field;
+    width: auto;
+    padding: $spacing-sm $spacing-md;
+    font-size: $font-size-sm;
+    cursor: pointer;
+  }
+
+  &__loader, &__empty {
+    text-align: center;
+    color: $text-muted;
+    padding: $spacing-2xl;
+  }
+
+  &__empty a { color: $accent-primary; font-weight: $font-weight-semibold; }
+
+  &__pager {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: $spacing-md;
+    margin-top: $spacing-xl;
+
+    &-btn {
+      @include button-ghost;
+      &:disabled { opacity: 0.4; cursor: not-allowed; }
+    }
+    &-info { color: $text-secondary; font-size: $font-size-sm; }
+  }
+}
+
+.breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-xs;
+  font-size: $font-size-sm;
+  color: $text-muted;
+  margin-bottom: $spacing-md;
+
+  a {
+    color: $text-secondary;
+    transition: color $transition-fast;
+    &:hover { color: $accent-primary; }
+  }
+
+  span:last-child { color: $text-primary; }
+}

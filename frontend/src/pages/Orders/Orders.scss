@@ -1,0 +1,160 @@
+.orders {
+  @include container;
+  padding-top: $spacing-xl;
+
+  &__title {
+    font-size: $font-size-2xl;
+    font-family: $font-heading;
+    margin-bottom: $spacing-md;
+  }
+
+  &__back {
+    display: inline-block;
+    color: $accent-primary;
+    margin-bottom: $spacing-md;
+    font-size: $font-size-sm;
+  }
+
+  &__head {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    margin-bottom: $spacing-lg;
+    flex-wrap: wrap;
+  }
+
+  &__date { color: $text-muted; font-size: $font-size-sm; }
+
+  &__empty {
+    text-align: center;
+    padding: $spacing-2xl;
+    color: $text-secondary;
+
+    a { color: $accent-primary; font-weight: $font-weight-semibold; }
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
+
+  &__row {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    gap: $spacing-md;
+    align-items: center;
+    padding: $spacing-md $spacing-lg;
+    background: $bg-secondary;
+    border: 1px solid $border-color;
+    border-radius: $border-radius-md;
+    transition: all $transition-fast;
+    cursor: pointer;
+
+    &:hover {
+      border-color: $accent-primary;
+      transform: translateY(-1px);
+    }
+
+    @media (max-width: $breakpoint-sm) {
+      grid-template-columns: 1fr 1fr;
+
+      &-id, &-meta, &-info, &-price { font-size: $font-size-sm; }
+    }
+
+    &-id { font-weight: $font-weight-semibold; }
+    &-meta { display: flex; align-items: center; gap: $spacing-sm; }
+    &-date { color: $text-muted; font-size: $font-size-xs; }
+    &-info { color: $text-secondary; font-size: $font-size-sm; }
+    &-price { font-family: $font-heading; font-weight: $font-weight-bold; color: $accent-primary; }
+  }
+
+  // Status badges
+  &__status {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: $border-radius-md;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-semibold;
+    background: $bg-card;
+    color: $text-primary;
+
+    &--big { font-size: $font-size-sm; padding: $spacing-xs $spacing-md; }
+  }
+
+  .status--created { background: rgba($warning, 0.15); color: $warning; }
+  .status--confirmed { background: rgba(#3b82f6, 0.15); color: #3b82f6; }
+  .status--manufacturing { background: rgba(#a855f7, 0.15); color: #a855f7; }
+  .status--delivering { background: rgba(#06b6d4, 0.15); color: #06b6d4; }
+  .status--completed { background: rgba($success, 0.15); color: $success; }
+  .status--cancelled { background: rgba($error, 0.15); color: $error; }
+
+  // Detail page
+  &__layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: $spacing-xl;
+
+    @media (max-width: $breakpoint-md) { grid-template-columns: 1fr; }
+  }
+
+  &__items { display: flex; flex-direction: column; gap: $spacing-md; }
+
+  &__item {
+    background: $bg-secondary;
+    border: 1px solid $border-color;
+    border-radius: $border-radius-md;
+    padding: $spacing-lg;
+  }
+
+  &__item-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: $spacing-sm;
+  }
+  &__item-name { font-weight: $font-weight-semibold; &:hover { color: $accent-primary; } }
+  &__item-art { color: $text-muted; font-size: $font-size-xs; }
+
+  &__item-opts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-xs;
+    margin-bottom: $spacing-sm;
+  }
+  &__item-opt {
+    background: $bg-card;
+    color: $text-secondary;
+    padding: 2px 8px;
+    border-radius: $border-radius-sm;
+    font-size: $font-size-xs;
+  }
+
+  &__item-foot {
+    display: flex;
+    justify-content: space-between;
+    padding-top: $spacing-sm;
+    border-top: 1px solid $border-color;
+    color: $text-secondary;
+    strong { color: $accent-primary; font-family: $font-heading; }
+  }
+
+  &__side {
+    background: $bg-secondary;
+    border: 1px solid $border-color;
+    border-radius: $border-radius-lg;
+    padding: $spacing-lg;
+    h3 { font-size: $font-size-md; margin-top: $spacing-md; margin-bottom: $spacing-xs; &:first-child { margin-top: 0; } }
+    p { color: $text-secondary; }
+  }
+
+  &__total {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding-top: $spacing-md;
+    margin-top: $spacing-md;
+    border-top: 1px solid $border-color;
+    strong { color: $accent-primary; font-size: $font-size-xl; font-family: $font-heading; }
+  }
+}

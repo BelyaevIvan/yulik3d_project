@@ -1,0 +1,266 @@
+.product {
+  @include container;
+  padding-top: $spacing-lg;
+
+  &__main {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: $spacing-2xl;
+    margin-bottom: $spacing-2xl;
+
+    @media (max-width: $breakpoint-md) {
+      grid-template-columns: 1fr;
+      gap: $spacing-xl;
+    }
+  }
+
+  &__gallery {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+  }
+
+  &__gallery-main {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    background: $bg-secondary;
+    border-radius: $border-radius-lg;
+    overflow: hidden;
+    border: 1px solid $border-color;
+
+    img { width: 100%; height: 100%; object-fit: cover; }
+  }
+
+  &__no-image {
+    @include flex-center;
+    height: 100%;
+    color: $text-muted;
+  }
+
+  &__gallery-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 44px;
+    height: 44px;
+    background: rgba($bg-primary, 0.8);
+    color: $text-primary;
+    border-radius: $border-radius-round;
+    font-size: 28px;
+    cursor: pointer;
+    @include flex-center;
+    transition: all $transition-fast;
+
+    &:hover { background: $accent-primary; }
+    &--prev { left: $spacing-sm; }
+    &--next { right: $spacing-sm; }
+  }
+
+  &__thumbs {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+    gap: $spacing-sm;
+  }
+
+  &__thumb {
+    aspect-ratio: 1 / 1;
+    border-radius: $border-radius-md;
+    overflow: hidden;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color $transition-fast;
+    background: $bg-input;
+
+    img { width: 100%; height: 100%; object-fit: cover; }
+
+    &--active { border-color: $accent-primary; }
+  }
+
+  &__info {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+  }
+
+  &__articul {
+    color: $text-muted;
+    font-size: $font-size-sm;
+  }
+
+  &__name {
+    font-size: $font-size-2xl;
+    font-family: $font-heading;
+  }
+
+  &__price-block {
+    display: flex;
+    align-items: baseline;
+    gap: $spacing-md;
+    flex-wrap: wrap;
+  }
+
+  &__price {
+    font-family: $font-heading;
+    font-size: $font-size-3xl;
+    font-weight: $font-weight-bold;
+    color: $accent-primary;
+  }
+
+  &__price-old {
+    font-size: $font-size-md;
+    color: $text-muted;
+    text-decoration: line-through;
+  }
+
+  &__price-sale {
+    background: $accent-primary;
+    color: $text-primary;
+    padding: 2px 8px;
+    border-radius: $border-radius-sm;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-bold;
+  }
+
+  &__availability {
+    font-weight: $font-weight-semibold;
+    font-size: $font-size-sm;
+
+    &--yes { color: $success; }
+    &--no { color: $error; }
+  }
+
+  &__options {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+    padding: $spacing-md 0;
+    border-top: 1px solid $border-color;
+    border-bottom: 1px solid $border-color;
+  }
+
+  &__option-label {
+    font-size: $font-size-sm;
+    color: $text-secondary;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__option-values {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-sm;
+  }
+
+  &__option-value {
+    background: $bg-card;
+    border: 2px solid $border-color;
+    color: $text-primary;
+    padding: $spacing-sm $spacing-md;
+    border-radius: $border-radius-md;
+    font-size: $font-size-sm;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    transition: all $transition-fast;
+
+    &:hover { border-color: $accent-primary; }
+
+    &--active {
+      background: rgba($accent-primary, 0.15);
+      border-color: $accent-primary;
+      color: $accent-primary;
+    }
+  }
+
+  &__option-extra { color: $text-muted; font-size: $font-size-xs; }
+
+  &__actions {
+    display: flex;
+    gap: $spacing-md;
+    align-items: center;
+  }
+
+  &__buy {
+    @include button-primary;
+    flex: 1;
+  }
+
+  &__fav {
+    width: 50px;
+    height: 50px;
+    border: 2px solid $border-color;
+    border-radius: $border-radius-md;
+    color: $text-secondary;
+    @include flex-center;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &:hover { border-color: $accent-primary; color: $accent-primary; }
+
+    &--active {
+      background: $accent-primary;
+      border-color: $accent-primary;
+      color: $text-primary;
+    }
+  }
+
+  // === Описания ===
+  &__details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: $spacing-xl;
+    margin-bottom: $spacing-2xl;
+
+    @media (max-width: $breakpoint-md) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__details-block {
+    background: $bg-secondary;
+    border-radius: $border-radius-lg;
+    border: 1px solid $border-color;
+    padding: $spacing-lg;
+  }
+
+  &__details-title {
+    font-family: $font-heading;
+    font-size: $font-size-lg;
+    margin-bottom: $spacing-md;
+    padding-bottom: $spacing-sm;
+    border-bottom: 1px solid $border-color;
+  }
+
+  // === Бонусы ===
+  &__bonus {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: $spacing-lg;
+
+    @media (max-width: $breakpoint-md) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__bonus-card {
+    @include card-style;
+    padding: $spacing-lg;
+    text-align: center;
+
+    h4 {
+      font-family: $font-heading;
+      font-size: $font-size-md;
+      margin-bottom: $spacing-sm;
+    }
+
+    p {
+      color: $text-secondary;
+      font-size: $font-size-sm;
+    }
+  }
+
+  &__bonus-icon {
+    font-size: 32px;
+    margin-bottom: $spacing-sm;
+  }
+}

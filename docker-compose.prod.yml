@@ -1,0 +1,40 @@
+# Prod-override. Закрывает host-порты у внутренних сервисов и добавляет Caddy.
+# Применяется поверх docker-compose.yml.
+#
+# Запуск на сервере:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+
+services:
+  postgres:
+    ports: []
+  redis:
+    ports: []
+  minio:
+    ports: []
+  backend:
+    ports: []
+  frontend:
+    ports: []
+    expose:
+      - "80"
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: yulik3d-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"   # HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - yulik3d-net
+    depends_on:
+      - frontend
+
+volumes:
+  caddy-data:
+  caddy-config:

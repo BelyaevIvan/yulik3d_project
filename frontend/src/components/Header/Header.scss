@@ -1,0 +1,453 @@
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: $header-height;
+  background: $bg-header;
+  border-bottom: 1px solid $border-color;
+  z-index: 1000;
+
+  &__inner {
+    @include container;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+  }
+
+  &__logo {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    flex-shrink: 0;
+    transition: opacity $transition-normal;
+
+    &-img { width: 44px; height: 44px; object-fit: contain; }
+
+    &-text {
+      font-family: $font-heading;
+      font-weight: $font-weight-black;
+      font-size: $font-size-lg;
+      color: $text-primary;
+      letter-spacing: 1px;
+
+      @media (max-width: $breakpoint-lg) { display: none; }
+    }
+
+    &:hover { opacity: 0.8; }
+  }
+
+  // === Burger (mobile) ===
+  &__burger {
+    display: none;
+    flex-direction: column;
+    gap: 5px;
+    padding: $spacing-sm;
+    cursor: pointer;
+    margin-left: auto;
+
+    span {
+      width: 24px;
+      height: 2px;
+      background: $text-primary;
+      transition: all $transition-normal;
+    }
+
+    @media (max-width: $breakpoint-lg) {
+      display: flex;
+    }
+  }
+
+  // === NAV ===
+  &__nav {
+    display: flex;
+    gap: 0;
+    flex-shrink: 0;
+
+    @media (max-width: $breakpoint-lg) {
+      display: none;
+      position: fixed;
+      top: $header-height;
+      left: 0;
+      right: 0;
+      flex-direction: column;
+      background: $bg-secondary;
+      padding: $spacing-md;
+      gap: $spacing-sm;
+      border-bottom: 1px solid $border-color;
+      max-height: calc(100vh - #{$header-height});
+      overflow-y: auto;
+
+      &--open { display: flex; }
+    }
+  }
+
+  &__nav-item {
+    position: relative;
+
+    @media (min-width: ($breakpoint-lg + 1px)) {
+      &:hover > .header__dropdown {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+        pointer-events: auto;
+      }
+    }
+  }
+
+  &__nav-link {
+    display: block;
+    font-family: $font-heading;
+    font-size: $font-size-md;
+    font-weight: $font-weight-semibold;
+    padding: $spacing-sm $spacing-md;
+    border-radius: $border-radius-md;
+    transition: color $transition-normal;
+
+    &:hover { color: $accent-primary; }
+    &--active { color: $accent-primary; }
+  }
+
+  // === DROPDOWN ===
+  &__dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    transform: translateY(8px);
+    background: $bg-secondary;
+    border: 1px solid $border-color;
+    border-radius: $border-radius-lg;
+    padding: $spacing-xl;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: all 0.25s ease;
+    box-shadow: $shadow-lg;
+    z-index: 1001;
+    min-width: 600px;
+    max-width: 800px;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: -16px;
+      left: 0;
+      right: 0;
+      height: 16px;
+    }
+
+    @media (max-width: $breakpoint-lg) {
+      position: static;
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transform: none;
+      min-width: 0;
+      box-shadow: none;
+      padding: $spacing-md 0 $spacing-md $spacing-md;
+      background: transparent;
+      border: none;
+      border-left: 2px solid $border-color;
+      display: none;
+    }
+  }
+
+  // На мобиле раскрытие по клику
+  &__nav-item--expanded > .header__dropdown {
+    @media (max-width: $breakpoint-lg) {
+      display: block;
+    }
+  }
+
+  &__dropdown-inner {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: $spacing-xl;
+
+    @media (max-width: $breakpoint-lg) {
+      grid-template-columns: 1fr;
+      gap: $spacing-md;
+    }
+  }
+
+  &__dropdown-col { min-width: 0; }
+
+  &__dropdown-heading {
+    display: block;
+    font-family: $font-heading;
+    font-size: $font-size-base;
+    font-weight: $font-weight-bold;
+    padding-bottom: $spacing-sm;
+    margin-bottom: $spacing-sm;
+    border-bottom: 1px solid $border-color;
+    transition: color $transition-normal;
+
+    &:hover { color: $accent-primary; }
+  }
+
+  &__dropdown-list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__dropdown-link {
+    display: block;
+    font-size: $font-size-sm;
+    color: $text-secondary;
+    padding: $spacing-xs 0;
+
+    &:hover { color: $accent-primary; }
+  }
+
+  &__dropdown-all {
+    display: block;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-semibold;
+    color: $text-primary;
+    padding-top: $spacing-sm;
+    border-top: 1px solid $border-color;
+
+    &:hover { color: $accent-primary; }
+  }
+
+  &__dropdown-footer {
+    text-align: center;
+    padding-top: $spacing-md;
+    margin-top: $spacing-md;
+    border-top: 1px solid $border-color;
+
+    &-link {
+      font-family: $font-heading;
+      font-weight: $font-weight-semibold;
+
+      &:hover { color: $accent-primary; }
+    }
+  }
+
+  // === SEARCH ===
+  &__search {
+    flex: 1;
+    max-width: 600px;
+    display: flex;
+    align-items: center;
+    background: $bg-input;
+    border: 1px solid $border-color;
+    border-radius: $border-radius-xl;
+    transition: border-color $transition-normal;
+    position: relative;
+    min-width: 0;
+
+    &:focus-within { border-color: $accent-primary; }
+
+    @media (max-width: $breakpoint-md) {
+      order: 5;
+      flex-basis: 100%;
+      margin-top: $spacing-sm;
+    }
+
+    &-inner {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      padding: 0 $spacing-md;
+      gap: $spacing-sm;
+      min-width: 0;
+    }
+
+    &-icon { opacity: 0.5; }
+
+    &-input {
+      flex: 1;
+      padding: $spacing-sm 0;
+      color: $text-primary;
+      font-size: $font-size-sm;
+      min-width: 0;
+
+      &::placeholder { color: $text-muted; }
+    }
+
+    &-btn {
+      padding: $spacing-sm $spacing-lg;
+      color: $text-primary;
+      font-family: $font-heading;
+      font-size: $font-size-sm;
+      font-weight: $font-weight-semibold;
+      border: 1px solid $border-color;
+      border-radius: $border-radius-lg;
+      margin: 4px;
+      cursor: pointer;
+      transition: all $transition-normal;
+
+      &:hover {
+        background: $accent-primary;
+        border-color: $accent-primary;
+      }
+
+      @media (max-width: $breakpoint-sm) { display: none; }
+    }
+  }
+
+  &__suggestions {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: $bg-secondary;
+    border: 1px solid $border-color;
+    border-radius: $border-radius-lg;
+    overflow: hidden;
+    box-shadow: $shadow-lg;
+    z-index: 1002;
+    display: none;
+    max-height: 400px;
+    overflow-y: auto;
+
+    &--visible { display: block; }
+  }
+
+  &__suggestion-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: $spacing-sm $spacing-lg;
+    transition: background $transition-fast;
+    cursor: pointer;
+    border-bottom: 1px solid rgba($border-color, 0.5);
+
+    &:last-child { border-bottom: none; }
+    &:hover { background: $bg-card; }
+
+    &--empty { justify-content: center; cursor: default; color: $text-muted; }
+  }
+
+  &__suggestion-text { font-size: $font-size-sm; }
+  &__suggestion-price { font-family: $font-heading; font-weight: $font-weight-semibold; color: $text-secondary; margin-left: $spacing-md; white-space: nowrap; }
+
+  // === ACTIONS (user, cart) ===
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    margin-left: auto;
+
+    @media (max-width: $breakpoint-lg) { margin-left: 0; }
+  }
+
+  &__login {
+    font-family: $font-heading;
+    font-weight: $font-weight-semibold;
+    color: $text-primary;
+    padding: $spacing-sm $spacing-md;
+    border-radius: $border-radius-md;
+    border: 1px solid $border-color;
+    transition: all $transition-normal;
+
+    &:hover { background: $accent-primary; border-color: $accent-primary; }
+  }
+
+  &__user {
+    position: relative;
+
+    @media (min-width: ($breakpoint-lg + 1px)) {
+      &:hover .header__user-dropdown {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+        pointer-events: auto;
+      }
+    }
+
+    &-btn {
+      display: flex;
+      align-items: center;
+      gap: $spacing-sm;
+      padding: $spacing-sm $spacing-md;
+      cursor: pointer;
+      color: $text-primary;
+      transition: color $transition-normal;
+      &:hover { color: $accent-primary; }
+    }
+
+    &-name {
+      font-size: $font-size-sm;
+      max-width: 140px;
+      @include text-ellipsis;
+
+      @media (max-width: $breakpoint-md) { display: none; }
+    }
+
+    &-dropdown {
+      position: absolute;
+      top: calc(100% + 4px);
+      right: 0;
+      min-width: 200px;
+      background: $bg-secondary;
+      border: 1px solid $border-color;
+      border-radius: $border-radius-lg;
+      padding: $spacing-sm 0;
+      box-shadow: $shadow-lg;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(8px);
+      transition: all 0.2s ease;
+      pointer-events: none;
+      z-index: 1003;
+
+      @media (max-width: $breakpoint-lg) {
+        position: fixed;
+        top: $header-height;
+        right: $spacing-md;
+        left: auto;
+      }
+    }
+
+    &--expanded .header__user-dropdown {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    &-item {
+      display: block;
+      width: 100%;
+      padding: $spacing-sm $spacing-md;
+      text-align: left;
+      color: $text-primary;
+      font-size: $font-size-sm;
+      cursor: pointer;
+      transition: background $transition-fast;
+
+      &:hover { background: $bg-card; color: $accent-primary; }
+
+      &--admin { color: $accent-primary; font-weight: $font-weight-semibold; }
+      &--btn { border-top: 1px solid $border-color; margin-top: $spacing-xs; padding-top: $spacing-sm; }
+    }
+  }
+
+  &__cart {
+    position: relative;
+    padding: $spacing-sm;
+    transition: color $transition-normal;
+    color: $text-primary;
+
+    &:hover { color: $accent-primary; }
+
+    &-badge {
+      position: absolute;
+      top: -2px;
+      right: -4px;
+      width: 20px;
+      height: 20px;
+      background: $accent-primary;
+      color: $text-primary;
+      font-size: 11px;
+      font-weight: $font-weight-bold;
+      border-radius: $border-radius-round;
+      @include flex-center;
+    }
+  }
+}
