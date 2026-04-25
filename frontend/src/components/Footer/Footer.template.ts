@@ -28,7 +28,6 @@ export const footerTemplate = `
       <div class="footer__socials">
         <a href="{{contact.vk}}" target="_blank" rel="noopener" class="footer__social" title="ВКонтакте">VK</a>
         <a href="{{contact.telegram}}" target="_blank" rel="noopener" class="footer__social" title="Telegram">TG</a>
-        <a href="{{contact.instagram}}" target="_blank" rel="noopener" class="footer__social" title="Instagram">IG</a>
       </div>
     </div>
   </div>
