@@ -223,3 +223,22 @@ func renameItemCols(prefix string) string {
 	}
 	return strings.Join(parts, ", ")
 }
+
+// ListAllVisible — все не-hidden товары для sitemap. Без пагинации, лимит 5000.
+func (r *ItemRepo) ListAllVisible(ctx context.Context) ([]model.Item, error) {
+	const q = `SELECT ` + itemCols + ` FROM item WHERE hidden = false ORDER BY created_at DESC LIMIT 5000`
+	rows, err := r.db.Query(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []model.Item
+	for rows.Next() {
+		it, err := scanItem(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, it)
+	}
+	return out, rows.Err()
+}

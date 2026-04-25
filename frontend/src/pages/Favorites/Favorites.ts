@@ -5,6 +5,7 @@ import { favoritesStore } from '@/store/favorites';
 import { router } from '@/router/router';
 import { productCardTemplate } from '@/components/ProductCard/ProductCard.template';
 import { syncFavoriteButtons } from '@/utils/favoriteButtons';
+import { setPageMeta, clearProductJsonLd } from '@/utils/seo';
 import './Favorites.scss';
 
 const tpl = `
@@ -35,6 +36,8 @@ export class FavoritesPage {
       router.navigate('/login?next=/favorites');
       return;
     }
+    setPageMeta({ title: 'Избранное', noindex: true });
+    clearProductJsonLd();
     this.root.innerHTML = renderTemplate(tpl, { loading: true, items: [], itemsHtml: '' });
 
     try {

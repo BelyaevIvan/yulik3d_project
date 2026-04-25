@@ -1,8 +1,11 @@
+import { setPageMeta, clearProductJsonLd } from '@/utils/seo';
 import './Errors.scss';
 
 export class NotFoundPage {
   constructor(private root: HTMLElement) {}
   render(): void {
+    setPageMeta({ title: 'Страница не найдена', noindex: true });
+    clearProductJsonLd();
     this.root.innerHTML = `
       <div class="error-page">
         <div class="error-page__code">404</div>

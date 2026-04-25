@@ -5,6 +5,7 @@ import { ordersApi } from '@/api/orders';
 import { ApiError } from '@/api/client';
 import { router } from '@/router/router';
 import { toast } from '@/components/Toast/Toast';
+import { setPageMeta, clearProductJsonLd } from '@/utils/seo';
 import './Cart.scss';
 
 const tpl = `
@@ -101,6 +102,9 @@ export class CartPage {
   constructor(private root: HTMLElement) {}
 
   render(): void {
+    setPageMeta({ title: 'Корзина', noindex: true });
+    clearProductJsonLd();
+
     const lines = cartStore.getLines();
     const u = authStore.getUser();
     this.root.innerHTML = renderTemplate(tpl, {

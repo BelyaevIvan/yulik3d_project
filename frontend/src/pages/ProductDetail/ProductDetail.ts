@@ -9,6 +9,7 @@ import { favoritesStore } from '@/store/favorites';
 import { router } from '@/router/router';
 import { toast } from '@/components/Toast/Toast';
 import { renderMarkdown } from '@/utils/markdown';
+import { setPageMeta, setProductJsonLd } from '@/utils/seo';
 import type { ItemDetailDTO } from '@/api/types';
 import './ProductDetail.scss';
 
@@ -43,6 +44,30 @@ export class ProductDetailPage {
       categoryId: firstCat?.id || '',
       descriptionInfoHtml: renderMarkdown(it.description_info),
       descriptionOtherHtml: renderMarkdown(it.description_other),
+    });
+
+    // === SEO ===
+    // Краткое описание из markdown без разметки (первые 160 символов)
+    const plainDesc = it.description_info
+      .replace(/[*_`#>\[\](){}]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 160);
+    setPageMeta({
+      title: it.name,
+      description: `${it.name} — ${plainDesc}`,
+      image: it.pictures[0]?.url,
+      type: 'product',
+      noindex: it.hidden, // скрытые товары не индексируем
+    });
+    setProductJsonLd({
+      name: it.name,
+      description: plainDesc,
+      image: it.pictures.map((p) => p.url),
+      price: it.final_price,
+      availability: it.hidden ? 'out of stock' : 'in stock',
+      url: `https://yulik3d.ru/product/${it.id}`,
+      sku: it.articul,
     });
 
     this.bindEvents();

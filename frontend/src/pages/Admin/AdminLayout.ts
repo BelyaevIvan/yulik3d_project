@@ -2,6 +2,7 @@
 import { renderTemplate } from '@/utils/template';
 import { authStore } from '@/store/auth';
 import { router } from '@/router/router';
+import { setPageMeta, clearProductJsonLd } from '@/utils/seo';
 import './AdminLayout.scss';
 
 export type AdminSection = 'items' | 'categories' | 'options' | 'orders';
@@ -33,6 +34,15 @@ export function requireAdmin(): boolean {
 
 /** Рендерит каркас админки и возвращает контейнер для контента. */
 export function renderAdminShell(root: HTMLElement, active: AdminSection): HTMLElement {
+  const titles: Record<AdminSection, string> = {
+    items: 'Админ — Товары',
+    orders: 'Админ — Заказы',
+    categories: 'Админ — Категории',
+    options: 'Админ — Типы опций',
+  };
+  setPageMeta({ title: titles[active], noindex: true });
+  clearProductJsonLd();
+
   root.innerHTML = renderTemplate(tpl, { active });
   return root.querySelector<HTMLElement>('#adminMain')!;
 }

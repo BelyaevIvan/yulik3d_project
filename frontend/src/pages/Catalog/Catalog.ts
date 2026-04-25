@@ -3,6 +3,7 @@ import { catalogTemplate } from './Catalog.template';
 import { catalogApi } from '@/api/catalog';
 import { productCardTemplate } from '@/components/ProductCard/ProductCard.template';
 import { syncFavoriteButtons } from '@/utils/favoriteButtons';
+import { setPageMeta, clearProductJsonLd } from '@/utils/seo';
 import { router } from '@/router/router';
 import type { CategoryType, CategoryDTO, ItemCardDTO } from '@/api/types';
 import './Catalog.scss';
@@ -70,6 +71,23 @@ export class CatalogPage {
         }
       }
       if (q) title = `Поиск: «${q}»`;
+
+      // === SEO ===
+      const seoBase =
+        this.type === 'figure' ? 'фигурки' :
+        this.type === 'other' ? 'макеты' :
+        'товары';
+      const seoTitle =
+        q ? `Поиск «${q}»` :
+        subcategoryLabel ? `${subcategoryLabel} — ${seoBase}` :
+        categoryLabel ? `${categoryLabel} — ${seoBase}` :
+        title;
+      const seoDesc =
+        q
+          ? `Результаты поиска «${q}» в каталоге YULIK3D.`
+          : `Каталог: ${seoBase} ручной работы из 3D-печати. Полимерная смола, разные размеры, опции покраски и гравировки. Доставка по России.`;
+      setPageMeta({ title: seoTitle, description: seoDesc });
+      clearProductJsonLd();
 
       const itemsHtml = res.items.map((it: ItemCardDTO) =>
         renderTemplate(productCardTemplate, it),
