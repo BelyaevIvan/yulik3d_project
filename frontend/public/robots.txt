@@ -1,0 +1,20 @@
+User-agent: *
+Allow: /
+
+# Запретить индексацию приватных и служебных разделов
+Disallow: /admin
+Disallow: /admin/
+Disallow: /api/
+Disallow: /minio/
+Disallow: /swagger
+Disallow: /swagger/
+Disallow: /cart
+Disallow: /profile
+Disallow: /orders
+Disallow: /orders/
+Disallow: /favorites
+Disallow: /login
+Disallow: /register
+
+# Карта сайта (генерится бэком)
+Sitemap: https://yulik3d.ru/sitemap.xml

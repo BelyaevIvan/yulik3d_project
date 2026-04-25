@@ -2,6 +2,7 @@ import { renderTemplate } from '@/utils/template';
 import { ordersApi } from '@/api/orders';
 import { authStore } from '@/store/auth';
 import { router } from '@/router/router';
+import { setPageMeta, clearProductJsonLd } from '@/utils/seo';
 import './Orders.scss';
 
 const tpl = `
@@ -37,6 +38,8 @@ export class MyOrdersPage {
 
   async render(): Promise<void> {
     if (!authStore.isAuthed()) { router.navigate('/login?next=/orders'); return; }
+    setPageMeta({ title: 'Мои заказы', noindex: true });
+    clearProductJsonLd();
     this.root.innerHTML = renderTemplate(tpl, { loading: true, items: [] });
     try {
       const res = await ordersApi.listMy({ limit: 50 });

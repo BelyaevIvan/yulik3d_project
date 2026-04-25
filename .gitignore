@@ -5,6 +5,7 @@
 .env.prod.example
 
 # Go build artifacts
+backups/
 backend/bin/
 backend/dist/
 *.exe

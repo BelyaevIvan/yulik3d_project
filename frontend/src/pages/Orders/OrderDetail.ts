@@ -3,6 +3,7 @@ import { ordersApi } from '@/api/orders';
 import { authStore } from '@/store/auth';
 import { router } from '@/router/router';
 import { ApiError } from '@/api/client';
+import { setPageMeta, clearProductJsonLd } from '@/utils/seo';
 import './Orders.scss';
 
 const tpl = `
@@ -60,6 +61,8 @@ export class OrderDetailPage {
 
   async render(): Promise<void> {
     if (!authStore.isAuthed()) { router.navigate('/login?next=/orders/' + this.id); return; }
+    setPageMeta({ title: `Заказ № ${this.id.slice(0, 8)}`, noindex: true });
+    clearProductJsonLd();
     this.root.innerHTML = `<div class="orders"><p style="text-align:center;padding:60px;color:#888">Загрузка...</p></div>`;
     try {
       const o = await ordersApi.getMy(this.id);

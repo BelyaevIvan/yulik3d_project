@@ -19,6 +19,7 @@ type routes struct {
 	adminOption   *handler.AdminOptionHandler
 	adminCategory *handler.AdminCategoryHandler
 	adminOrder    *handler.AdminOrderHandler
+	sitemap       *handler.SitemapHandler
 
 	requireAuth  mw
 	requireAdmin mw
@@ -31,6 +32,9 @@ func registerRoutes(mux *http.ServeMux, r *routes) {
 
 	// ---- Public ----
 	mux.HandleFunc("GET "+base+"/health", r.health.Health)
+
+	// SEO: sitemap.xml — корневой путь, не под /api/v1/
+	mux.HandleFunc("GET /sitemap.xml", r.sitemap.Sitemap)
 
 	// Auth (guest)
 	mux.Handle("POST "+base+"/auth/register", r.rejectAuthed(http.HandlerFunc(r.auth.Register)))

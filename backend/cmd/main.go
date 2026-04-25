@@ -169,6 +169,7 @@ func main() {
 	adminOptionH := handler.NewAdminOptionHandler(deps, adminOptionSvc)
 	adminCategoryH := handler.NewAdminCategoryHandler(deps, adminCategorySvc)
 	adminOrderH := handler.NewAdminOrderHandler(deps, orderSvc)
+	sitemapH := handler.NewSitemapHandler(deps, itemRepo, cfg.App.PublicBackendURL)
 
 	// ---------- Middleware ----------
 	getSession := func(r *http.Request, id string) (model.Session, error) {
@@ -191,6 +192,7 @@ func main() {
 		adminOption:    adminOptionH,
 		adminCategory:  adminCategoryH,
 		adminOrder:     adminOrderH,
+		sitemap:        sitemapH,
 		requireAuth:    requireAuth,
 		requireAdmin:   requireAdmin,
 		rejectAuthed:   rejectAuthed,
