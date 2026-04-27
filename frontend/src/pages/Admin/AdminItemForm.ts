@@ -52,7 +52,8 @@ const tpl = `
   </div>
 
   <div class="admin__field">
-    <label>Категории/подкатегории</label>
+    <label>Категории/подкатегории*</label>
+    <div class="hint">Нужно выбрать хотя бы одну подкатегорию — товар будет показываться в её категории.</div>
     <div id="subcategorySelector"></div>
     <button type="button" id="addCategoryBtn" class="admin__btn--ghost" style="margin-top:8px; padding:6px 12px; background:#141450; color:#fff; border:1px solid #2a2a5a; border-radius:6px;">+ Создать категорию</button>
     <button type="button" id="addSubcategoryBtn" class="admin__btn--ghost" style="margin-top:8px; margin-left:8px; padding:6px 12px; background:#141450; color:#fff; border:1px solid #2a2a5a; border-radius:6px;">+ Создать подкатегорию</button>
@@ -372,12 +373,32 @@ export class AdminItemFormPage {
       e.preventDefault();
       if (errEl) errEl.style.display = 'none';
       const fd = new FormData(form);
+      const name = String(fd.get('name') || '').trim();
+      const info = String(fd.get('description_info') || '').trim();
+      const other = String(fd.get('description_other') || '').trim();
+      const priceStr = String(fd.get('price') || '').trim();
+      const saleStr = String(fd.get('sale') || '0').trim();
+
+      // Клиентская валидация обязательных полей. Окончательная — на бэке.
+      if (!name) { toast.error('Укажите название товара'); return; }
+      if (priceStr === '') { toast.error('Укажите цену'); return; }
+      const price = parseInt(priceStr, 10);
+      if (isNaN(price) || price < 0) { toast.error('Цена должна быть числом ≥ 0'); return; }
+      const sale = parseInt(saleStr, 10);
+      if (isNaN(sale) || sale < 0 || sale > 100) { toast.error('Скидка должна быть от 0 до 100'); return; }
+      if (!info) { toast.error('Заполните «Информация о товаре»'); return; }
+      if (!other) { toast.error('Заполните «Особенности»'); return; }
+      if (this.selectedSubcatIDs.size === 0) {
+        toast.error('Выберите хотя бы одну подкатегорию (вместе с её категорией)');
+        return;
+      }
+
       const req: ItemCreateRequest = {
-        name: String(fd.get('name')),
-        description_info: String(fd.get('description_info')),
-        description_other: String(fd.get('description_other')),
-        price: parseInt(String(fd.get('price')), 10) || 0,
-        sale: parseInt(String(fd.get('sale')), 10) || 0,
+        name,
+        description_info: info,
+        description_other: other,
+        price,
+        sale,
         hidden: fd.get('hidden') === 'on',
         subcategory_ids: Array.from(this.selectedSubcatIDs),
         options: this.optionRows.map<ItemOptionInput>((r) => ({

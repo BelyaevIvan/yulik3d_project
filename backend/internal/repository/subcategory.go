@@ -101,3 +101,11 @@ func (r *SubcategoryRepo) Delete(ctx context.Context, id uuid.UUID) (bool, error
 	}
 	return ct.RowsAffected() > 0, nil
 }
+
+// CountItems — сколько товаров (включая скрытые) привязано к этой подкатегории.
+// Используется при удалении подкатегории.
+func (r *SubcategoryRepo) CountItems(ctx context.Context, id uuid.UUID) (int, error) {
+	var n int
+	err := r.db.QueryRow(ctx, `SELECT COUNT(*) FROM item_subcategory WHERE subcategory_id = $1`, id).Scan(&n)
+	return n, err
+}
