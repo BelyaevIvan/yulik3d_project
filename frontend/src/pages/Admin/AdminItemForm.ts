@@ -68,6 +68,7 @@ const tpl = `
   {{#if isEdit}}
   <div class="admin__field">
     <label>Картинки</label>
+    <div class="admin__pic-hint">Перетаскивайте миниатюры, чтобы изменить порядок. №1 — титульная.</div>
     <div id="picturesGrid" class="admin__pictures"></div>
     <label class="admin__upload">
       📷 Нажмите, чтобы загрузить изображение (png/jpg/webp, до 10МБ)
@@ -222,14 +223,16 @@ export class AdminItemFormPage {
       root.innerHTML = '<p style="color:#888; font-size:13px; grid-column:1/-1;">Картинок пока нет.</p>';
       return;
     }
-    root.innerHTML = this.item.pictures.map((p) => `
-      <div class="admin__pic" data-pic-id="${p.id}">
-        <img src="${p.url}" alt="" />
-        <button type="button" data-act="del-pic" title="Удалить">×</button>
+    root.innerHTML = this.item.pictures.map((p, i) => `
+      <div class="admin__pic" draggable="true" data-pic-id="${p.id}" data-idx="${i}">
+        <img src="${p.url}" alt="" draggable="false" />
+        <span class="admin__pic-pos">${i + 1}</span>
+        <button type="button" data-act="del-pic" title="Удалить" draggable="false">×</button>
       </div>
     `).join('');
     root.querySelectorAll<HTMLButtonElement>('[data-act="del-pic"]').forEach((btn) => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', async (ev) => {
+        ev.stopPropagation();
         const wrapEl = btn.closest('.admin__pic') as HTMLElement;
         const picId = wrapEl.dataset.picId!;
         if (!confirm('Удалить картинку?')) return;
@@ -243,6 +246,86 @@ export class AdminItemFormPage {
         }
       });
     });
+    this.bindPicturesDragAndDrop(root);
+  }
+
+  private bindPicturesDragAndDrop(root: HTMLElement): void {
+    let draggedIdx: number | null = null;
+
+    const clearTargets = () => {
+      root.querySelectorAll('.admin__pic--drop-target').forEach((x) => x.classList.remove('admin__pic--drop-target'));
+    };
+
+    root.querySelectorAll<HTMLElement>('.admin__pic').forEach((el) => {
+      el.addEventListener('dragstart', (e) => {
+        // Не начинать drag, если потащили за кнопку удаления.
+        if ((e.target as HTMLElement).tagName === 'BUTTON') {
+          e.preventDefault();
+          return;
+        }
+        draggedIdx = parseInt(el.dataset.idx!, 10);
+        el.classList.add('admin__pic--dragging');
+        e.dataTransfer!.effectAllowed = 'move';
+        e.dataTransfer!.setData('text/plain', String(draggedIdx)); // Firefox требует payload
+      });
+
+      el.addEventListener('dragend', () => {
+        el.classList.remove('admin__pic--dragging');
+        clearTargets();
+        draggedIdx = null;
+      });
+
+      el.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer!.dropEffect = 'move';
+      });
+
+      el.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        const targetIdx = parseInt(el.dataset.idx!, 10);
+        if (draggedIdx === null || targetIdx === draggedIdx) return;
+        el.classList.add('admin__pic--drop-target');
+      });
+
+      el.addEventListener('dragleave', (e) => {
+        const related = e.relatedTarget as Node | null;
+        if (!el.contains(related)) el.classList.remove('admin__pic--drop-target');
+      });
+
+      el.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        const targetIdx = parseInt(el.dataset.idx!, 10);
+        clearTargets();
+        if (draggedIdx === null || targetIdx === draggedIdx) return;
+        const from = draggedIdx;
+        draggedIdx = null;
+        await this.applyPicturesReorder(from, targetIdx);
+      });
+    });
+  }
+
+  private async applyPicturesReorder(fromIdx: number, toIdx: number): Promise<void> {
+    if (!this.item || !this.id) return;
+    const pics = this.item.pictures.slice();
+    const [moved] = pics.splice(fromIdx, 1);
+    pics.splice(toIdx, 0, moved);
+
+    // Оптимистично перерисовываем — UI отзывчивый, не ждём сервер.
+    this.item.pictures = pics.map((p, i) => ({ ...p, position: i + 1 }));
+    this.renderPictures();
+
+    try {
+      const order = pics.map((p, i) => ({ picture_id: p.id, position: i + 1 }));
+      const res = await adminApi.reorderPictures(this.id, order);
+      this.item.pictures = res.pictures;
+      this.renderPictures();
+      toast.success('Порядок сохранён');
+    } catch (e) {
+      if (e instanceof ApiError) toast.error(e.message);
+      // Откатываемся к серверному состоянию.
+      this.item = await adminApi.getItem(this.id);
+      this.renderPictures();
+    }
   }
 
   private bindEvents(): void {
