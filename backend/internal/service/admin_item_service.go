@@ -194,6 +194,12 @@ func (s *AdminItemService) Patch(ctx context.Context, id uuid.UUID, p model.Item
 		}
 		p.Name = &v
 	}
+	if p.DescriptionInfo != nil && strings.TrimSpace(*p.DescriptionInfo) == "" {
+		return model.ItemDetailDTO{}, model.NewInvalidInput("«Информация о товаре» не может быть пустой")
+	}
+	if p.DescriptionOther != nil && strings.TrimSpace(*p.DescriptionOther) == "" {
+		return model.ItemDetailDTO{}, model.NewInvalidInput("«Особенности» не могут быть пустыми")
+	}
 	it, err := s.items.Patch(ctx, id, p)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -245,21 +251,33 @@ func checkOptionDuplicates(opts []model.ItemOptionCreateRequest) error {
 }
 
 func validateItemCreate(r model.ItemCreateRequest) error {
-	return validateItemCommon(r.Name, r.DescriptionInfo, r.DescriptionOther, r.Price, r.Sale)
+	if err := validateItemCommon(r.Name, r.DescriptionInfo, r.DescriptionOther, r.Price, r.Sale); err != nil {
+		return err
+	}
+	if len(r.SubcategoryIDs) == 0 {
+		return model.NewInvalidInput("Укажите хотя бы одну подкатегорию (вместе с её категорией)")
+	}
+	return nil
 }
 
 func validateItemUpdate(r model.ItemUpdateRequest) error {
-	return validateItemCommon(r.Name, r.DescriptionInfo, r.DescriptionOther, r.Price, r.Sale)
+	if err := validateItemCommon(r.Name, r.DescriptionInfo, r.DescriptionOther, r.Price, r.Sale); err != nil {
+		return err
+	}
+	if len(r.SubcategoryIDs) == 0 {
+		return model.NewInvalidInput("У товара должна остаться хотя бы одна подкатегория (вместе с её категорией)")
+	}
+	return nil
 }
 
 func validateItemCommon(name, info, other string, price, sale int) error {
 	if strings.TrimSpace(name) == "" {
 		return model.NewInvalidInput("Укажите название")
 	}
-	if info == "" {
+	if strings.TrimSpace(info) == "" {
 		return model.NewInvalidInput("Укажите описание (Информация о товаре)")
 	}
-	if other == "" {
+	if strings.TrimSpace(other) == "" {
 		return model.NewInvalidInput("Укажите особенности товара")
 	}
 	if price < 0 {

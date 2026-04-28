@@ -71,3 +71,16 @@ func (r *CategoryRepo) Delete(ctx context.Context, id uuid.UUID) (bool, error) {
 	}
 	return ct.RowsAffected() > 0, nil
 }
+
+// CountItems — сколько товаров (включая скрытые) числится хотя бы в одной
+// подкатегории этой категории. Используется при удалении категории.
+func (r *CategoryRepo) CountItems(ctx context.Context, id uuid.UUID) (int, error) {
+	const q = `
+		SELECT COUNT(DISTINCT isc.item_id)
+		FROM item_subcategory isc
+		JOIN subcategory sc ON sc.id = isc.subcategory_id
+		WHERE sc.category_id = $1`
+	var n int
+	err := r.db.QueryRow(ctx, q, id).Scan(&n)
+	return n, err
+}

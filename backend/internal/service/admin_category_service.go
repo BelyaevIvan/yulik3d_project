@@ -70,6 +70,21 @@ func (s *AdminCategoryService) PatchCategory(ctx context.Context, id uuid.UUID, 
 }
 
 func (s *AdminCategoryService) DeleteCategory(ctx context.Context, id uuid.UUID) error {
+	if _, err := s.categories.GetByID(ctx, id); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.NewNotFound("Категория не найдена")
+		}
+		return fmt.Errorf("get category: %w", err)
+	}
+	n, err := s.categories.CountItems(ctx, id)
+	if err != nil {
+		return fmt.Errorf("count items: %w", err)
+	}
+	if n > 0 {
+		return model.NewInvalidInput(fmt.Sprintf(
+			"В категории есть товары (%d шт.). Сначала отвяжите их от подкатегорий этой категории или смените им подкатегорию.", n,
+		))
+	}
 	ok, err := s.categories.Delete(ctx, id)
 	if err != nil {
 		return fmt.Errorf("delete: %w", err)
@@ -138,6 +153,21 @@ func (s *AdminCategoryService) PatchSubcategory(ctx context.Context, id uuid.UUI
 }
 
 func (s *AdminCategoryService) DeleteSubcategory(ctx context.Context, id uuid.UUID) error {
+	if _, err := s.subcategories.GetByID(ctx, id); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.NewNotFound("Подкатегория не найдена")
+		}
+		return fmt.Errorf("get subcategory: %w", err)
+	}
+	n, err := s.subcategories.CountItems(ctx, id)
+	if err != nil {
+		return fmt.Errorf("count items: %w", err)
+	}
+	if n > 0 {
+		return model.NewInvalidInput(fmt.Sprintf(
+			"В подкатегории есть товары (%d шт.). Сначала отвяжите их от этой подкатегории.", n,
+		))
+	}
 	ok, err := s.subcategories.Delete(ctx, id)
 	if err != nil {
 		return fmt.Errorf("delete: %w", err)
