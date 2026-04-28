@@ -1,6 +1,17 @@
 # Caddy config для прода. На сервере замени yulik3d.ru на свой домен.
 # Caddy сам получит Let's Encrypt сертификат при первом старте и обновит автоматически.
 
+# HTTP — обычно весь трафик редиректится на HTTPS. Исключение: проверочные файлы
+# почтовых сервисов (VK WorkSpace и т.п.), которые ходят по http:// и не следуют
+# редиректам. Для путей вида /mailru-domain*.html проксируем на frontend без редиректа.
+http://yulik3d.ru, http://www.yulik3d.ru {
+    @verify path /mailru-domain*.html /mailru-verification.html
+    handle @verify {
+        reverse_proxy frontend:80
+    }
+    redir https://{host}{uri} 308
+}
+
 yulik3d.ru, www.yulik3d.ru {
     encode zstd gzip
 
