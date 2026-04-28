@@ -72,3 +72,19 @@ type UpdateMeRequest struct {
 	OldPassword *string `json:"old_password,omitempty" example:"oldpass123"`
 	NewPassword *string `json:"new_password,omitempty" example:"newpass456"`
 }
+
+// PasswordResetRequestDTO — тело POST /auth/password/reset-request.
+type PasswordResetRequestDTO struct {
+	Email string `json:"email" example:"user@example.com"`
+}
+
+// PasswordResetConfirmDTO — тело POST /auth/password/reset-confirm.
+type PasswordResetConfirmDTO struct {
+	Token       string `json:"token" example:"<токен из ссылки в письме>"`
+	NewPassword string `json:"new_password" example:"newpass456"`
+}
+
+// OKResponse — стандартный ответ {"ok": true} для эндпоинтов без полезной нагрузки.
+type OKResponse struct {
+	OK bool `json:"ok" example:"true"`
+}

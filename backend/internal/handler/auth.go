@@ -144,3 +144,47 @@ func (h *AuthHandler) UpdateMe(w http.ResponseWriter, r *http.Request) {
 	}
 	OK(w, dto)
 }
+
+// PasswordResetRequest godoc
+// @Summary      Запросить ссылку на восстановление пароля
+// @Description  Принимает email. Если пользователь существует — отправляет письмо со ссылкой (TTL 1 час). По соображениям безопасности всегда возвращает 200, даже если email не найден или сработал throttle.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        payload  body      model.PasswordResetRequestDTO  true  "Email пользователя"
+// @Success      200      {object}  model.OKResponse
+// @Failure      400      {object}  model.ErrorResponse
+// @Router       /auth/password/reset-request [post]
+func (h *AuthHandler) PasswordResetRequest(w http.ResponseWriter, r *http.Request) {
+	var req model.PasswordResetRequestDTO
+	if err := DecodeJSON(r, &req); err != nil {
+		h.Err(w, r, err)
+		return
+	}
+	// Сервис всегда возвращает nil — внутренние ошибки логируются, наружу не текут.
+	_ = h.auth.PasswordResetRequest(r.Context(), h.Log, req.Email)
+	OK(w, model.OKResponse{OK: true})
+}
+
+// PasswordResetConfirm godoc
+// @Summary      Подтвердить восстановление пароля и установить новый
+// @Description  Принимает токен из ссылки в письме и новый пароль. Токен инвалидируется атомарно (одноразовое использование).
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        payload  body      model.PasswordResetConfirmDTO  true  "Токен и новый пароль"
+// @Success      200      {object}  model.OKResponse
+// @Failure      400      {object}  model.ErrorResponse
+// @Router       /auth/password/reset-confirm [post]
+func (h *AuthHandler) PasswordResetConfirm(w http.ResponseWriter, r *http.Request) {
+	var req model.PasswordResetConfirmDTO
+	if err := DecodeJSON(r, &req); err != nil {
+		h.Err(w, r, err)
+		return
+	}
+	if err := h.auth.PasswordResetConfirm(r.Context(), req.Token, req.NewPassword); err != nil {
+		h.Err(w, r, err)
+		return
+	}
+	OK(w, model.OKResponse{OK: true})
+}

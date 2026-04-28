@@ -53,6 +53,17 @@
     border-radius: $border-radius-md;
   }
 
+  &__success {
+    color: $text-primary;
+    font-size: $font-size-sm;
+    line-height: 1.5;
+    margin-bottom: $spacing-md;
+    padding: $spacing-sm $spacing-md;
+    background: rgba($accent-primary, 0.08);
+    border: 1px solid rgba($accent-primary, 0.3);
+    border-radius: $border-radius-md;
+  }
+
   &__submit {
     @include button-primary;
     width: 100%;

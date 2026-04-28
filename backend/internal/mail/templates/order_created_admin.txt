@@ -1,0 +1,23 @@
+{{define "order_created_admin.txt"}}Поступил новый заказ на сайте yulik3d.ru.
+
+═══════════════════════════════════════
+Заказ № {{.OrderID}}
+Дата: {{.CreatedAt}}
+Сумма: {{formatPrice .Total}} ₽
+═══════════════════════════════════════
+
+ПОКУПАТЕЛЬ
+Имя: {{.ContactFullName}}
+Телефон: {{.ContactPhone}}
+Email: {{.UserEmail}}
+
+СОСТАВ ЗАКАЗА
+{{range .Items}}• {{.Name}} — {{.Quantity}} шт. × {{formatPrice .UnitTotalPrice}} ₽ = {{formatPrice .Subtotal}} ₽
+{{- range .Options}}
+    {{.TypeLabel}}: {{.Value}}{{if .Price}} (+{{formatPrice .Price}} ₽){{end}}
+{{- end}}
+{{end}}{{if .CustomerComment}}
+КОММЕНТАРИЙ ПОКУПАТЕЛЯ
+{{.CustomerComment}}
+{{end}}
+Открыть в админке: {{.AdminURL}}{{template "mail_footer" .}}{{end}}

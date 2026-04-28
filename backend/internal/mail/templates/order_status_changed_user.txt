@@ -1,0 +1,34 @@
+{{define "order_status_changed_user.txt"}}Здравствуйте, {{.UserName}}!
+
+{{if eq .StatusKey "created"}}Спасибо за заказ на сайте yulik3d.ru!
+
+Ваш заказ № #{{.OrderIDShort}} принят. Мы свяжемся с Вами в ближайшее время для подтверждения и согласования деталей.
+{{if .ItemsSummary}}
+СОСТАВ ЗАКАЗА
+{{range .ItemsSummary}}- {{.}}
+{{end}}{{end}}
+Сумма: {{formatPrice .Total}} ₽
+
+Отслеживать заказ: {{.OrderURL}}
+{{else if eq .StatusKey "confirmed"}}Ваш заказ № #{{.OrderIDShort}} подтверждён. Мы приступаем к подготовке производства.
+
+Спасибо, что выбрали Yulik3D!
+
+Открыть заказ: {{.OrderURL}}
+{{else if eq .StatusKey "manufacturing"}}Ваш заказ № #{{.OrderIDShort}} передан в производство. Идёт изготовление 3D-модели.
+
+Это может занять от 2 до 20 дней — мы сообщим, когда заказ будет готов.
+
+Открыть заказ: {{.OrderURL}}
+{{else if eq .StatusKey "delivering"}}Ваш заказ № #{{.OrderIDShort}} передан в доставку. Скоро Вы получите его!
+
+Открыть заказ: {{.OrderURL}}
+{{else if eq .StatusKey "completed"}}Ваш заказ № #{{.OrderIDShort}} завершён. Спасибо, что выбрали Yulik3D!
+
+Будем рады видеть Вас снова — yulik3d.ru
+{{else if eq .StatusKey "cancelled"}}К сожалению, Ваш заказ № #{{.OrderIDShort}} был отменён.
+{{if .AdminNote}}
+Комментарий администратора:
+{{.AdminNote}}
+{{end}}
+Если у Вас есть вопросы — пожалуйста, свяжитесь с нами.{{end}}{{template "mail_footer" .}}{{end}}

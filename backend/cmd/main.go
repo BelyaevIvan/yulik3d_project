@@ -33,8 +33,10 @@ import (
 
 	"yulik3d/config"
 	"yulik3d/internal/handler"
+	"yulik3d/internal/mail"
 	"yulik3d/internal/middleware"
 	"yulik3d/internal/model"
+	"yulik3d/internal/queue"
 	"yulik3d/internal/repository"
 	"yulik3d/internal/service"
 	"yulik3d/migrations"
@@ -126,9 +128,43 @@ func main() {
 	itemSubRepo := repository.NewItemSubcategoryRepo(db)
 	favoriteRepo := repository.NewFavoriteRepo(db)
 	orderRepo := repository.NewOrderRepo(db)
+	pwResetRepo := repository.NewPasswordResetRepo(rdb, cfg.PasswordReset.TokenTTL, cfg.PasswordReset.Throttle)
+
+	// ---------- Mail + Queue ----------
+	smtpSender := mail.NewSender(
+		mail.SMTPConfig{
+			Host: cfg.SMTP.Host, Port: cfg.SMTP.Port,
+			User: cfg.SMTP.User, Password: cfg.SMTP.Password,
+			UseSSL: cfg.SMTP.UseSSL,
+		},
+		mail.FromAddress{Name: cfg.Mail.FromName, Email: cfg.Mail.FromEmail},
+	)
+	mailer, err := mail.NewMailer(smtpSender, cfg.Mail.SupportContact)
+	if err != nil {
+		log.Error("mail templates", "err", err)
+		os.Exit(2)
+	}
+	if !mailer.Configured() {
+		log.Warn("smtp not configured — emails will be skipped (set SMTP_* in .env to enable)")
+	}
+
+	asynqRedis := queue.RedisOpt{Addr: cfg.Redis.Addr(), Password: cfg.Redis.Password, DB: cfg.Redis.AsynqDB}
+	queueClient := queue.NewClient(asynqRedis, log)
+	defer queueClient.Close()
+
+	queueServer := queue.NewServer(asynqRedis, log)
+	queueServer.RegisterHandlers(mailer)
+	if err := queueServer.Start(); err != nil {
+		log.Error("asynq start", "err", err)
+		os.Exit(2)
+	}
+	defer queueServer.Shutdown()
+
+	mailEnq := queue.NewMailEnqueuer(queueClient)
 
 	// ---------- Services ----------
-	authSvc := service.NewAuthService(userRepo, sessionRepo, rateRepo,
+	authSvc := service.NewAuthService(userRepo, sessionRepo, rateRepo, pwResetRepo, mailEnq,
+		cfg.App.PublicFrontendURL,
 		passwordhash.Params{
 			Memory:      cfg.Argon2.MemoryKiB,
 			Iterations:  cfg.Argon2.Iterations,
@@ -141,7 +177,8 @@ func main() {
 	catalogSvc := service.NewCatalogService(itemRepo, pictureRepo, itemOptionRepo, optionTypeRepo,
 		itemSubRepo, categoryRepo, subcategoryRepo, minioSvc)
 	favoriteSvc := service.NewFavoriteService(favoriteRepo, itemRepo, catalogSvc)
-	orderSvc := service.NewOrderService(orderRepo, itemRepo, itemOptionRepo, optionTypeRepo, userRepo, tx)
+	orderSvc := service.NewOrderService(orderRepo, itemRepo, itemOptionRepo, optionTypeRepo, userRepo, tx,
+		mailEnq, cfg.App.PublicFrontendURL, cfg.Mail.AdminNotify, log)
 	adminItemSvc := service.NewAdminItemService(itemRepo, itemOptionRepo, optionTypeRepo, subcategoryRepo, catalogSvc, tx)
 	adminPictureSvc := service.NewAdminPictureService(itemRepo, pictureRepo, minioSvc, tx, cfg.Uploads.MaxBytes)
 	adminOptionSvc := service.NewAdminOptionService(optionTypeRepo, itemOptionRepo, itemRepo)

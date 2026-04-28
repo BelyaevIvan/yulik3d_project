@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -17,21 +18,33 @@ import (
 	"yulik3d/pkg/passwordhash"
 )
 
-// AuthService — регистрация, логин, logout, профиль.
+// PasswordResetMailer — интерфейс отправки письма с токеном ресета.
+// Реализуется на уровне очереди (queue.Client). Сервис о asynq не знает.
+type PasswordResetMailer interface {
+	EnqueuePasswordReset(ctx context.Context, to, userName, resetLink string) error
+}
+
+// AuthService — регистрация, логин, logout, профиль, восстановление пароля.
 type AuthService struct {
-	users       *repository.UserRepo
-	sessions    *repository.SessionRepo
-	rate        *repository.RateLimitRepo
-	argonParams passwordhash.Params
-	sessionTTL  time.Duration
-	rateAttempt int
-	rateWindow  time.Duration
+	users          *repository.UserRepo
+	sessions       *repository.SessionRepo
+	rate           *repository.RateLimitRepo
+	pwReset        *repository.PasswordResetRepo
+	mailer         PasswordResetMailer
+	frontendURL    string
+	argonParams    passwordhash.Params
+	sessionTTL     time.Duration
+	rateAttempt    int
+	rateWindow     time.Duration
 }
 
 func NewAuthService(
 	users *repository.UserRepo,
 	sessions *repository.SessionRepo,
 	rate *repository.RateLimitRepo,
+	pwReset *repository.PasswordResetRepo,
+	mailer PasswordResetMailer,
+	frontendURL string,
 	argonParams passwordhash.Params,
 	sessionTTL time.Duration,
 	rateAttempts int,
@@ -39,6 +52,7 @@ func NewAuthService(
 ) *AuthService {
 	return &AuthService{
 		users: users, sessions: sessions, rate: rate,
+		pwReset: pwReset, mailer: mailer, frontendURL: strings.TrimRight(frontendURL, "/"),
 		argonParams: argonParams, sessionTTL: sessionTTL,
 		rateAttempt: rateAttempts, rateWindow: rateWindow,
 	}
@@ -214,6 +228,88 @@ func (s *AuthService) UpdateMe(ctx context.Context, userID uuid.UUID, req model.
 		return model.UserDTO{}, fmt.Errorf("update profile: %w", err)
 	}
 	return u.ToDTO(), nil
+}
+
+// ---------- Восстановление пароля ----------
+
+// PasswordResetRequest — пользователь запрашивает ссылку на сброс пароля.
+//
+// Контракт:
+//   - Всегда возвращает nil (не палит существование email — защита от перебора).
+//   - Если email найден И throttle прошёл → создаёт токен и кладёт письмо в очередь.
+//   - Иначе — тихо игнорирует.
+//   - Внутренние ошибки (Redis недоступен, БД недоступна) логируются, наружу не пробрасываются.
+func (s *AuthService) PasswordResetRequest(ctx context.Context, log *slog.Logger, email string) error {
+	email = normalizeEmail(email)
+	if email == "" || !strings.Contains(email, "@") {
+		return nil // некорректный email — тихо игнор, чтобы не дать сигнал атакующему
+	}
+
+	// Throttle — не более одного запроса в TTL для одного email.
+	ok, err := s.pwReset.AcquireThrottle(ctx, email)
+	if err != nil {
+		log.Error("pwreset throttle", "err", err, "email", email)
+		return nil
+	}
+	if !ok {
+		log.Info("pwreset throttled", "email", email)
+		return nil
+	}
+
+	u, err := s.users.GetByEmail(ctx, email)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			log.Info("pwreset: user not found", "email", email)
+			return nil
+		}
+		log.Error("pwreset get user", "err", err)
+		return nil
+	}
+
+	token, err := s.pwReset.CreateToken(ctx, u.ID)
+	if err != nil {
+		log.Error("pwreset create token", "err", err, "user_id", u.ID)
+		return nil
+	}
+
+	resetLink := s.frontendURL + "/password-reset?token=" + token
+	if err := s.mailer.EnqueuePasswordReset(ctx, u.Email, u.FullName, resetLink); err != nil {
+		log.Error("pwreset enqueue", "err", err, "user_id", u.ID)
+		// токен уже создан — пользователь может попробовать ещё раз через минуту;
+		// оставляем нерабочий токен в Redis на TTL, ничего страшного
+	}
+	return nil
+}
+
+// PasswordResetConfirm — установить новый пароль по токену.
+func (s *AuthService) PasswordResetConfirm(ctx context.Context, token, newPassword string) error {
+	if strings.TrimSpace(token) == "" {
+		return model.NewInvalidInput("Токен не указан")
+	}
+	if len(newPassword) < 8 {
+		return model.NewInvalidInput("Пароль должен быть не короче 8 символов")
+	}
+	if len(newPassword) > 128 {
+		return model.NewInvalidInput("Пароль слишком длинный (макс. 128 символов)")
+	}
+	userID, err := s.pwReset.ConsumeToken(ctx, token)
+	if err != nil {
+		if errors.Is(err, repository.ErrTokenInvalid) {
+			return model.NewInvalidInput("Ссылка недействительна или срок её действия истёк")
+		}
+		return fmt.Errorf("consume token: %w", err)
+	}
+	hash, err := passwordhash.Hash(newPassword, s.argonParams)
+	if err != nil {
+		return fmt.Errorf("hash: %w", err)
+	}
+	if _, err := s.users.UpdateProfile(ctx, userID, nil, nil, &hash); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.NewNotFound("Пользователь не найден")
+		}
+		return fmt.Errorf("update password: %w", err)
+	}
+	return nil
 }
 
 // ---------- helpers ----------
