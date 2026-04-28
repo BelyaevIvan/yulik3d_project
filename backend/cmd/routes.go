@@ -40,6 +40,10 @@ func registerRoutes(mux *http.ServeMux, r *routes) {
 	mux.Handle("POST "+base+"/auth/register", r.rejectAuthed(http.HandlerFunc(r.auth.Register)))
 	mux.Handle("POST "+base+"/auth/login", r.rejectAuthed(http.HandlerFunc(r.auth.Login)))
 
+	// Восстановление пароля — без auth, доступно гостям
+	mux.HandleFunc("POST "+base+"/auth/password/reset-request", r.auth.PasswordResetRequest)
+	mux.HandleFunc("POST "+base+"/auth/password/reset-confirm", r.auth.PasswordResetConfirm)
+
 	// Catalog (public)
 	mux.HandleFunc("GET "+base+"/items", r.catalog.ListItems)
 	mux.HandleFunc("GET "+base+"/items/{id}", r.catalog.GetItem)

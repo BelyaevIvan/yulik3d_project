@@ -24,6 +24,9 @@ const tpl = `
       </div>
       <button type="submit" class="auth__submit" id="loginSubmit">Войти</button>
     </form>
+    <div class="auth__alt" style="margin-top:12px;">
+      <a href="/forgot-password" data-link>Забыли пароль?</a>
+    </div>
     <div class="auth__alt">
       Нет аккаунта? <a href="/register" data-link>Зарегистрироваться</a>
     </div>

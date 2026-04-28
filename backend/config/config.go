@@ -11,21 +11,25 @@ import (
 )
 
 type Config struct {
-	App        App
-	HTTP       HTTP
-	Postgres   Postgres
-	Redis      Redis
-	Session    Session
-	RateLimit  RateLimit
-	Argon2     Argon2
-	MinIO      MinIO
-	Uploads    Uploads
+	App           App
+	HTTP          HTTP
+	Postgres      Postgres
+	Redis         Redis
+	Session       Session
+	RateLimit     RateLimit
+	Argon2        Argon2
+	MinIO         MinIO
+	Uploads       Uploads
+	SMTP          SMTP
+	Mail          Mail
+	PasswordReset PasswordReset
 }
 
 type App struct {
-	Env      string // development | production
-	LogLevel string
-	PublicBackendURL string
+	Env               string // development | production
+	LogLevel          string
+	PublicBackendURL  string
+	PublicFrontendURL string
 }
 
 type HTTP struct {
@@ -53,10 +57,31 @@ type Redis struct {
 	Port     int
 	Password string
 	DB       int
+	AsynqDB  int // отдельная DB для очереди писем — изолирует от сессий/rate-limit
 }
 
 func (r Redis) Addr() string {
 	return fmt.Sprintf("%s:%d", r.Host, r.Port)
+}
+
+type SMTP struct {
+	Host     string
+	Port     int
+	User     string
+	Password string
+	UseSSL   bool // true для порта 465 (implicit TLS), false для 587 (STARTTLS)
+}
+
+type Mail struct {
+	FromName    string
+	FromEmail   string
+	AdminNotify string // куда слать админ-уведомления
+	SupportContact string // email для футера писем («По вопросам пишите: ...»)
+}
+
+type PasswordReset struct {
+	TokenTTL time.Duration
+	Throttle time.Duration
 }
 
 type Session struct {
@@ -148,9 +173,10 @@ func Load() (Config, error) {
 
 	cfg := Config{
 		App: App{
-			Env:              getStr("APP_ENV", "development", false),
-			LogLevel:         getStr("LOG_LEVEL", "info", false),
-			PublicBackendURL: getStr("PUBLIC_BACKEND_URL", "http://localhost:8080", false),
+			Env:               getStr("APP_ENV", "development", false),
+			LogLevel:          getStr("LOG_LEVEL", "info", false),
+			PublicBackendURL:  getStr("PUBLIC_BACKEND_URL", "http://localhost:8080", false),
+			PublicFrontendURL: strings.TrimRight(getStr("PUBLIC_FRONTEND_URL", "http://localhost:5173", false), "/"),
 		},
 		HTTP: HTTP{
 			Host:           getStr("BACKEND_HOST", "0.0.0.0", false),
@@ -170,6 +196,7 @@ func Load() (Config, error) {
 			Port:     getInt("REDIS_PORT", 6379),
 			Password: getStr("REDIS_PASSWORD", "", false),
 			DB:       getInt("REDIS_DB", 0),
+			AsynqDB:  getInt("REDIS_ASYNQ_DB", 1),
 		},
 		Session: Session{
 			TTL:          time.Duration(getInt("SESSION_TTL_SECONDS", 2592000)) * time.Second,
@@ -197,6 +224,23 @@ func Load() (Config, error) {
 		},
 		Uploads: Uploads{
 			MaxBytes: getInt64("MAX_UPLOAD_BYTES", 10*1024*1024),
+		},
+		SMTP: SMTP{
+			Host:     getStr("SMTP_HOST", "", false),
+			Port:     getInt("SMTP_PORT", 465),
+			User:     getStr("SMTP_USER", "", false),
+			Password: getStr("SMTP_PASS", "", false),
+			UseSSL:   getBool("SMTP_USE_SSL", true),
+		},
+		Mail: Mail{
+			FromName:       getStr("SMTP_FROM_NAME", "Yulik3D", false),
+			FromEmail:      getStr("SMTP_FROM_EMAIL", "", false),
+			AdminNotify:    getStr("ADMIN_NOTIFY_EMAIL", "", false),
+			SupportContact: getStr("MAIL_SUPPORT_CONTACT", "", false),
+		},
+		PasswordReset: PasswordReset{
+			TokenTTL: time.Duration(getInt("PWRESET_TOKEN_TTL_SECONDS", 3600)) * time.Second,
+			Throttle: time.Duration(getInt("PWRESET_THROTTLE_SECONDS", 60)) * time.Second,
 		},
 	}
 

@@ -1,0 +1,57 @@
+{{define "order_created_admin.html"}}{{template "mail_header" .}}
+<div style="font-size:18px;font-weight:600;margin-bottom:6px;">Новый заказ</div>
+<div style="color:#6a6f80;font-size:13px;margin-bottom:20px;">{{.CreatedAt}}</div>
+
+<table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+  <tr>
+    <td style="padding:8px 0;color:#6a6f80;font-size:13px;width:40%;">Заказ</td>
+    <td style="padding:8px 0;font-family:monospace;font-size:13px;word-break:break-all;">{{.OrderID}}</td>
+  </tr>
+  <tr>
+    <td style="padding:8px 0;color:#6a6f80;font-size:13px;border-top:1px solid #eaecf0;">Сумма</td>
+    <td style="padding:8px 0;font-size:18px;font-weight:700;color:#e84d2e;border-top:1px solid #eaecf0;">{{formatPrice .Total}} ₽</td>
+  </tr>
+</table>
+
+<div style="font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#1a1a2e;margin:20px 0 10px;">Покупатель</div>
+<table style="width:100%;border-collapse:collapse;font-size:14px;line-height:1.6;">
+  <tr><td style="color:#6a6f80;width:120px;padding:4px 0;">Имя</td><td style="padding:4px 0;"><strong>{{.ContactFullName}}</strong></td></tr>
+  <tr><td style="color:#6a6f80;padding:4px 0;">Телефон</td><td style="padding:4px 0;"><a href="tel:{{.ContactPhone}}" style="color:#e84d2e;text-decoration:none;">{{.ContactPhone}}</a></td></tr>
+  <tr><td style="color:#6a6f80;padding:4px 0;">Email</td><td style="padding:4px 0;"><a href="mailto:{{.UserEmail}}" style="color:#e84d2e;text-decoration:none;">{{.UserEmail}}</a></td></tr>
+</table>
+
+<div style="font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#1a1a2e;margin:24px 0 10px;">Состав заказа</div>
+{{range .Items}}
+<div style="padding:12px 0;border-top:1px solid #eaecf0;">
+  <div style="display:flex;justify-content:space-between;font-size:15px;line-height:1.5;">
+    <div style="font-weight:600;">{{.Name}}</div>
+    <div style="white-space:nowrap;color:#1a1a2e;"><strong>{{formatPrice .Subtotal}} ₽</strong></div>
+  </div>
+  <div style="color:#6a6f80;font-size:13px;margin-top:4px;">
+    {{.Quantity}} шт. × {{formatPrice .UnitTotalPrice}} ₽
+  </div>
+  {{if .Options}}
+  <div style="margin-top:8px;font-size:13px;color:#3d4254;">
+    {{range .Options}}
+    <div style="margin:2px 0;">
+      <span style="color:#6a6f80;">{{.TypeLabel}}:</span> {{.Value}}{{if .Price}} <span style="color:#8a8fa0;">(+{{formatPrice .Price}} ₽)</span>{{end}}
+    </div>
+    {{end}}
+  </div>
+  {{end}}
+</div>
+{{end}}
+
+{{if .CustomerComment}}
+<div style="margin-top:20px;padding:12px 16px;background:#f7f8fb;border-left:3px solid #e84d2e;border-radius:4px;">
+  <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.5px;color:#6a6f80;font-weight:700;margin-bottom:6px;">Комментарий покупателя</div>
+  <div style="font-size:14px;line-height:1.5;">{{.CustomerComment}}</div>
+</div>
+{{end}}
+
+<div style="text-align:center;margin:28px 0 0;">
+  <a href="{{.AdminURL}}" style="display:inline-block;padding:12px 28px;background:#e84d2e;color:#ffffff;text-decoration:none;font-weight:600;border-radius:8px;font-size:15px;">
+    Открыть в админке
+  </a>
+</div>
+{{template "mail_footer" .}}{{end}}

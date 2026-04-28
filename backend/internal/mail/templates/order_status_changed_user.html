@@ -1,0 +1,74 @@
+{{define "order_status_changed_user.html"}}{{template "mail_header" .}}
+<div style="font-size:18px;font-weight:600;margin-bottom:16px;">{{.StatusHuman}}</div>
+
+<p style="font-size:15px;line-height:1.6;margin:0 0 16px;">
+  Здравствуйте, <strong>{{.UserName}}</strong>!
+</p>
+
+{{if eq .StatusKey "created"}}
+<p style="font-size:15px;line-height:1.6;margin:0 0 16px;">
+  Спасибо за заказ на сайте yulik3d.ru!
+</p>
+<p style="font-size:15px;line-height:1.6;margin:0 0 20px;">
+  Ваш заказ № <strong>#{{.OrderIDShort}}</strong> принят. Мы свяжемся с Вами в ближайшее время для подтверждения и согласования деталей.
+</p>
+{{if .ItemsSummary}}
+<div style="font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#1a1a2e;margin:20px 0 10px;">Состав заказа</div>
+<ul style="margin:0 0 16px;padding-left:18px;font-size:14px;line-height:1.7;">
+{{range .ItemsSummary}}<li>{{.}}</li>{{end}}
+</ul>
+{{end}}
+<p style="font-size:15px;margin:8px 0 20px;">Сумма: <strong>{{formatPrice .Total}} ₽</strong></p>
+
+{{else if eq .StatusKey "confirmed"}}
+<p style="font-size:15px;line-height:1.6;margin:0 0 20px;">
+  Ваш заказ № <strong>#{{.OrderIDShort}}</strong> подтверждён. Мы приступаем к подготовке производства.
+</p>
+<p style="font-size:15px;line-height:1.6;margin:0 0 20px;">
+  Спасибо, что выбрали Yulik3D!
+</p>
+
+{{else if eq .StatusKey "manufacturing"}}
+<p style="font-size:15px;line-height:1.6;margin:0 0 20px;">
+  Ваш заказ № <strong>#{{.OrderIDShort}}</strong> передан в производство. Идёт изготовление 3D-модели.
+</p>
+<p style="font-size:15px;line-height:1.6;margin:0 0 20px;">
+  Это может занять от 2 до 20 дней — мы сообщим, когда заказ будет готов.
+</p>
+
+{{else if eq .StatusKey "delivering"}}
+<p style="font-size:15px;line-height:1.6;margin:0 0 20px;">
+  Ваш заказ № <strong>#{{.OrderIDShort}}</strong> передан в доставку. Скоро Вы получите его!
+</p>
+
+{{else if eq .StatusKey "completed"}}
+<p style="font-size:15px;line-height:1.6;margin:0 0 16px;">
+  Ваш заказ № <strong>#{{.OrderIDShort}}</strong> завершён. Спасибо, что выбрали Yulik3D!
+</p>
+<p style="font-size:15px;line-height:1.6;margin:0 0 20px;">
+  Будем рады видеть Вас снова — <a href="https://yulik3d.ru" style="color:#e84d2e;text-decoration:none;">yulik3d.ru</a>
+</p>
+
+{{else if eq .StatusKey "cancelled"}}
+<p style="font-size:15px;line-height:1.6;margin:0 0 16px;">
+  К сожалению, Ваш заказ № <strong>#{{.OrderIDShort}}</strong> был отменён.
+</p>
+{{if .AdminNote}}
+<div style="margin:20px 0;padding:12px 16px;background:#f7f8fb;border-left:3px solid #e84d2e;border-radius:4px;">
+  <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.5px;color:#6a6f80;font-weight:700;margin-bottom:6px;">Комментарий администратора</div>
+  <div style="font-size:14px;line-height:1.5;">{{.AdminNote}}</div>
+</div>
+{{end}}
+<p style="font-size:15px;line-height:1.6;margin:16px 0 20px;">
+  Если у Вас есть вопросы — пожалуйста, свяжитесь с нами.
+</p>
+{{end}}
+
+{{if and .OrderURL (ne .StatusKey "cancelled")}}
+<div style="text-align:center;margin:28px 0 0;">
+  <a href="{{.OrderURL}}" style="display:inline-block;padding:12px 28px;background:#e84d2e;color:#ffffff;text-decoration:none;font-weight:600;border-radius:8px;font-size:15px;">
+    {{if eq .StatusKey "created"}}Отслеживать заказ{{else}}Открыть заказ{{end}}
+  </a>
+</div>
+{{end}}
+{{template "mail_footer" .}}{{end}}

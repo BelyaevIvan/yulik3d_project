@@ -1,0 +1,9 @@
+{{define "mail_footer"}}
+
+--
+С уважением,
+команда Yulik3D
+
+Это автоматическое письмо. Пожалуйста, не отвечайте на него.{{if .Footer.SupportContact}}
+По вопросам пишите: {{.Footer.SupportContact}}{{end}}
+{{end}}

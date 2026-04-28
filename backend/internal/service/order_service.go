@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -13,13 +15,65 @@ import (
 	"yulik3d/internal/repository"
 )
 
+// OrderMailer — интерфейс отправки уведомлений по заказу. Реализуется на
+// уровне очереди (queue.Client). Сервис не зависит напрямую от asynq.
+type OrderMailer interface {
+	EnqueueOrderCreatedAdmin(ctx context.Context, p OrderCreatedAdminMail) error
+	EnqueueOrderStatusChanged(ctx context.Context, p OrderStatusChangedMail) error
+}
+
+// OrderCreatedAdminMail — DTO между сервисом и почтовой очередью.
+// Сервис заполняет, очередь сериализует. Имена/цены — снэпшоты, не зависят от состояния БД.
+type OrderCreatedAdminMail struct {
+	To              string
+	OrderID         string
+	OrderIDShort    string
+	CreatedAt       string
+	Total           int
+	UserEmail       string
+	ContactFullName string
+	ContactPhone    string
+	CustomerComment string
+	Items           []OrderCreatedAdminMailItem
+	AdminURL        string
+}
+
+type OrderCreatedAdminMailItem struct {
+	Name           string
+	Quantity       int
+	UnitTotalPrice int
+	Subtotal       int
+	Options        []OrderCreatedAdminMailOption
+}
+
+type OrderCreatedAdminMailOption struct {
+	TypeLabel string
+	Value     string
+	Price     int
+}
+
+type OrderStatusChangedMail struct {
+	To           string
+	UserName     string
+	OrderIDShort string
+	StatusKey    string
+	Total        int
+	ItemsSummary []string
+	AdminNote    string
+	OrderURL     string
+}
+
 type OrderService struct {
-	orders      *repository.OrderRepo
-	items       *repository.ItemRepo
-	itemOptions *repository.ItemOptionRepo
-	optionTypes *repository.OptionTypeRepo
-	users       *repository.UserRepo
-	tx          *repository.TxManager
+	orders         *repository.OrderRepo
+	items          *repository.ItemRepo
+	itemOptions    *repository.ItemOptionRepo
+	optionTypes    *repository.OptionTypeRepo
+	users          *repository.UserRepo
+	tx             *repository.TxManager
+	mailer         OrderMailer
+	frontendURL    string
+	adminEmail     string
+	log            *slog.Logger
 }
 
 func NewOrderService(
@@ -29,8 +83,16 @@ func NewOrderService(
 	optionTypes *repository.OptionTypeRepo,
 	users *repository.UserRepo,
 	tx *repository.TxManager,
+	mailer OrderMailer,
+	frontendURL string,
+	adminEmail string,
+	log *slog.Logger,
 ) *OrderService {
-	return &OrderService{orders: orders, items: items, itemOptions: itemOptions, optionTypes: optionTypes, users: users, tx: tx}
+	return &OrderService{
+		orders: orders, items: items, itemOptions: itemOptions, optionTypes: optionTypes,
+		users: users, tx: tx, mailer: mailer,
+		frontendURL: strings.TrimRight(frontendURL, "/"), adminEmail: adminEmail, log: log,
+	}
 }
 
 // Create — создание заказа с полной проверкой цен.
@@ -40,15 +102,7 @@ func (s *OrderService) Create(ctx context.Context, userID uuid.UUID, req model.O
 	}
 
 	// Прогрев: проверяем все товары и опции ДО начала tx, чтобы быстро отказать.
-	// Но окончательная запись — в tx.
-	type computedItem struct {
-		req         model.OrderItemCreate
-		item        model.Item
-		basePrice   int // с учётом sale
-		options     []model.ItemOption
-		optionTypes map[uuid.UUID]model.OptionType
-		totalPrice  int
-	}
+	// Но окончательная запись — в tx. Тип computedItem объявлен на уровне пакета.
 	computed := make([]computedItem, 0, len(req.Items))
 	totalPrice := 0
 
@@ -159,8 +213,114 @@ func (s *OrderService) Create(ctx context.Context, userID uuid.UUID, req model.O
 		return model.OrderDetailDTO{}, err
 	}
 
+	// Письма уходят асинхронно через очередь. Сбой не блокирует возврат заказа.
+	s.notifyOrderCreated(ctx, createdOrder, computed, typesMap)
+
 	return s.getMyDetail(ctx, createdOrder)
 }
+
+// notifyOrderCreated — постановка двух писем в очередь:
+//  1. Админу — детали нового заказа
+//  2. Пользователю — статус «Создан» (он же — приветственное письмо)
+//
+// Все ошибки логируются и проглатываются: заказ уже создан, не откатываем.
+func (s *OrderService) notifyOrderCreated(
+	ctx context.Context,
+	order model.Order,
+	computed []computedItem,
+	typesMap map[uuid.UUID]model.OptionType,
+) {
+	if s.mailer == nil {
+		return
+	}
+	user, err := s.users.GetByID(ctx, order.UserID)
+	if err != nil {
+		s.log.Error("notify_order_created: get user", "err", err, "order_id", order.ID)
+		return
+	}
+
+	// 1. Админу
+	if s.adminEmail != "" {
+		items := make([]OrderCreatedAdminMailItem, 0, len(computed))
+		summary := make([]string, 0, len(computed))
+		for _, c := range computed {
+			opts := make([]OrderCreatedAdminMailOption, 0, len(c.options))
+			for _, o := range c.options {
+				t := typesMap[o.TypeID]
+				opts = append(opts, OrderCreatedAdminMailOption{
+					TypeLabel: t.Label, Value: o.Value, Price: o.Price,
+				})
+			}
+			subtotal := c.totalPrice * c.req.Quantity
+			items = append(items, OrderCreatedAdminMailItem{
+				Name:           c.item.Name,
+				Quantity:       c.req.Quantity,
+				UnitTotalPrice: c.totalPrice,
+				Subtotal:       subtotal,
+				Options:        opts,
+			})
+			summary = append(summary, fmt.Sprintf("%s — %d шт.", c.item.Name, c.req.Quantity))
+		}
+		if err := s.mailer.EnqueueOrderCreatedAdmin(ctx, OrderCreatedAdminMail{
+			To:              s.adminEmail,
+			OrderID:         order.ID.String(),
+			OrderIDShort:    shortID(order.ID),
+			CreatedAt:       order.CreatedAt.UTC().Format("02.01.2006 15:04 UTC"),
+			Total:           order.TotalPrice,
+			UserEmail:       user.Email,
+			ContactFullName: order.ContactFullName,
+			ContactPhone:    order.ContactPhone,
+			CustomerComment: derefStr(order.CustomerComment),
+			Items:           items,
+			AdminURL:        s.frontendURL + "/admin/orders/" + order.ID.String(),
+		}); err != nil {
+			s.log.Error("enqueue order_created_admin", "err", err, "order_id", order.ID)
+		}
+
+		// 2. Пользователю — приветственное письмо со статусом «Создан»
+		if err := s.mailer.EnqueueOrderStatusChanged(ctx, OrderStatusChangedMail{
+			To:           user.Email,
+			UserName:     user.FullName,
+			OrderIDShort: shortID(order.ID),
+			StatusKey:    string(order.Status),
+			Total:        order.TotalPrice,
+			ItemsSummary: summary,
+			OrderURL:     s.frontendURL + "/orders/" + order.ID.String(),
+		}); err != nil {
+			s.log.Error("enqueue order_status_changed (created)", "err", err, "order_id", order.ID)
+		}
+	}
+}
+
+// shortID — первые 8 символов UUID для удобочитаемых ссылок в письмах.
+func shortID(id uuid.UUID) string {
+	s := id.String()
+	if len(s) >= 8 {
+		return s[:8]
+	}
+	return s
+}
+
+// derefStr — *string → string с пустотой как нулём.
+func derefStr(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+// computedItem вынесен на уровень пакета, чтобы был доступен в notifyOrderCreated.
+type computedItem struct {
+	req         model.OrderItemCreate
+	item        model.Item
+	basePrice   int
+	options     []model.ItemOption
+	optionTypes map[uuid.UUID]model.OptionType
+	totalPrice  int
+}
+
+// время для форматирования даты — оставляем глобальный импорт time доступным
+var _ = time.Time{}
 
 // ListMy — история заказов пользователя.
 func (s *OrderService) ListMy(ctx context.Context, userID uuid.UUID, status *model.OrderStatus, p model.Pagination) (model.ListPage[model.OrderListItemDTO], error) {
@@ -260,7 +420,38 @@ func (s *OrderService) AdminPatchStatus(ctx context.Context, orderID uuid.UUID, 
 	if err != nil {
 		return model.OrderAdminDetailDTO{}, fmt.Errorf("update status: %w", err)
 	}
+
+	// Письмо пользователю о смене статуса — асинхронно, ошибки не блокируют ответ админу.
+	s.notifyStatusChanged(ctx, o)
+
 	return s.composeAdminDetail(ctx, o)
+}
+
+// notifyStatusChanged — постановка письма пользователю в очередь.
+// Не отправляется для статуса "created" (там письмо уходит из notifyOrderCreated).
+func (s *OrderService) notifyStatusChanged(ctx context.Context, o model.Order) {
+	if s.mailer == nil {
+		return
+	}
+	if o.Status == model.OrderStatusCreated {
+		return
+	}
+	user, err := s.users.GetByID(ctx, o.UserID)
+	if err != nil {
+		s.log.Error("notify_status: get user", "err", err, "order_id", o.ID)
+		return
+	}
+	if err := s.mailer.EnqueueOrderStatusChanged(ctx, OrderStatusChangedMail{
+		To:           user.Email,
+		UserName:     user.FullName,
+		OrderIDShort: shortID(o.ID),
+		StatusKey:    string(o.Status),
+		Total:        o.TotalPrice,
+		AdminNote:    derefStr(o.AdminNote),
+		OrderURL:     s.frontendURL + "/orders/" + o.ID.String(),
+	}); err != nil {
+		s.log.Error("enqueue order_status_changed", "err", err, "order_id", o.ID)
+	}
 }
 
 func (s *OrderService) AdminPatchNote(ctx context.Context, orderID uuid.UUID, note *string) (model.OrderAdminDetailDTO, error) {
