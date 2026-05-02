@@ -15,6 +15,7 @@ import { LoginPage } from './pages/Auth/Login';
 import { RegisterPage } from './pages/Auth/Register';
 import { ForgotPasswordPage } from './pages/Auth/ForgotPassword';
 import { ResetPasswordPage } from './pages/Auth/ResetPassword';
+import { VerifyEmailPage } from './pages/Auth/VerifyEmail';
 import { ProfilePage } from './pages/Profile/Profile';
 import { FavoritesPage } from './pages/Favorites/Favorites';
 import { MyOrdersPage } from './pages/Orders/MyOrders';
@@ -83,6 +84,7 @@ class App {
     router.addRoute('/register', (_, q) => { set(''); new RegisterPage(this.contentEl, q).render(); });
     router.addRoute('/forgot-password', () => { set(''); new ForgotPasswordPage(this.contentEl).render(); });
     router.addRoute('/password-reset', (_, q) => { set(''); new ResetPasswordPage(this.contentEl, q).render(); });
+    router.addRoute('/verify-email', (_, q) => { set(''); new VerifyEmailPage(this.contentEl, q).render(); });
 
     router.addRoute('/profile', () => { set(''); new ProfilePage(this.contentEl).render(); });
     router.addRoute('/favorites', () => { set(''); new FavoritesPage(this.contentEl).render(); });

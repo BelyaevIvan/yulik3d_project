@@ -166,6 +166,49 @@ func (h *AuthHandler) PasswordResetRequest(w http.ResponseWriter, r *http.Reques
 	OK(w, model.OKResponse{OK: true})
 }
 
+// EmailVerifyConfirm godoc
+// @Summary      Подтвердить email по токену
+// @Description  Принимает токен из ссылки в письме. При успехе помечает аккаунт как email_verified=true. Токен инвалидируется атомарно (одноразовое использование).
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        payload  body      model.EmailVerifyConfirmDTO  true  "Токен из ссылки в письме"
+// @Success      200      {object}  model.OKResponse
+// @Failure      400      {object}  model.ErrorResponse
+// @Router       /auth/email/verify [post]
+func (h *AuthHandler) EmailVerifyConfirm(w http.ResponseWriter, r *http.Request) {
+	var req model.EmailVerifyConfirmDTO
+	if err := DecodeJSON(r, &req); err != nil {
+		h.Err(w, r, err)
+		return
+	}
+	if err := h.auth.EmailVerifyConfirm(r.Context(), req.Token); err != nil {
+		h.Err(w, r, err)
+		return
+	}
+	OK(w, model.OKResponse{OK: true})
+}
+
+// EmailVerifyResend godoc
+// @Summary      Отправить ссылку подтверждения email повторно
+// @Description  Принимает email. Если пользователь существует, не подтверждён и throttle прошёл — отправляет письмо с новой ссылкой (TTL 24 часа). По соображениям безопасности всегда возвращает 200.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        payload  body      model.EmailVerifyResendDTO  true  "Email пользователя"
+// @Success      200      {object}  model.OKResponse
+// @Failure      400      {object}  model.ErrorResponse
+// @Router       /auth/email/verify/resend [post]
+func (h *AuthHandler) EmailVerifyResend(w http.ResponseWriter, r *http.Request) {
+	var req model.EmailVerifyResendDTO
+	if err := DecodeJSON(r, &req); err != nil {
+		h.Err(w, r, err)
+		return
+	}
+	_ = h.auth.EmailVerifyResend(r.Context(), h.Log, req.Email)
+	OK(w, model.OKResponse{OK: true})
+}
+
 // PasswordResetConfirm godoc
 // @Summary      Подтвердить восстановление пароля и установить новый
 // @Description  Принимает токен из ссылки в письме и новый пароль. Токен инвалидируется атомарно (одноразовое использование).

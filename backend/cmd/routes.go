@@ -44,6 +44,11 @@ func registerRoutes(mux *http.ServeMux, r *routes) {
 	mux.HandleFunc("POST "+base+"/auth/password/reset-request", r.auth.PasswordResetRequest)
 	mux.HandleFunc("POST "+base+"/auth/password/reset-confirm", r.auth.PasswordResetConfirm)
 
+	// Подтверждение email — публичные эндпоинты (юзер мог быть разлогинен
+	// в момент клика по ссылке из письма; resend тоже работает по email из тела)
+	mux.HandleFunc("POST "+base+"/auth/email/verify", r.auth.EmailVerifyConfirm)
+	mux.HandleFunc("POST "+base+"/auth/email/verify/resend", r.auth.EmailVerifyResend)
+
 	// Catalog (public)
 	mux.HandleFunc("GET "+base+"/items", r.catalog.ListItems)
 	mux.HandleFunc("GET "+base+"/items/{id}", r.catalog.GetItem)

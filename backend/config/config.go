@@ -23,6 +23,7 @@ type Config struct {
 	SMTP          SMTP
 	Mail          Mail
 	PasswordReset PasswordReset
+	EmailVerify   EmailVerify
 }
 
 type App struct {
@@ -80,6 +81,11 @@ type Mail struct {
 }
 
 type PasswordReset struct {
+	TokenTTL time.Duration
+	Throttle time.Duration
+}
+
+type EmailVerify struct {
 	TokenTTL time.Duration
 	Throttle time.Duration
 }
@@ -241,6 +247,10 @@ func Load() (Config, error) {
 		PasswordReset: PasswordReset{
 			TokenTTL: time.Duration(getInt("PWRESET_TOKEN_TTL_SECONDS", 3600)) * time.Second,
 			Throttle: time.Duration(getInt("PWRESET_THROTTLE_SECONDS", 60)) * time.Second,
+		},
+		EmailVerify: EmailVerify{
+			TokenTTL: time.Duration(getInt("EMAIL_VERIFY_TOKEN_TTL_SECONDS", 86400)) * time.Second,
+			Throttle: time.Duration(getInt("EMAIL_VERIFY_THROTTLE_SECONDS", 60)) * time.Second,
 		},
 	}
 

@@ -34,4 +34,9 @@ export const authApi = {
       method: 'POST',
       body: { token, new_password: newPassword },
     }),
+
+  emailVerifyConfirm: (token: string) =>
+    request<{ ok: boolean }>('/auth/email/verify', { method: 'POST', body: { token } }),
+  emailVerifyResend: (email: string) =>
+    request<{ ok: boolean }>('/auth/email/verify/resend', { method: 'POST', body: { email } }),
 };

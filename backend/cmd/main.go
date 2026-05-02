@@ -129,6 +129,7 @@ func main() {
 	favoriteRepo := repository.NewFavoriteRepo(db)
 	orderRepo := repository.NewOrderRepo(db)
 	pwResetRepo := repository.NewPasswordResetRepo(rdb, cfg.PasswordReset.TokenTTL, cfg.PasswordReset.Throttle)
+	emailVerifyRepo := repository.NewEmailVerifyRepo(rdb, cfg.EmailVerify.TokenTTL, cfg.EmailVerify.Throttle)
 
 	// ---------- Mail + Queue ----------
 	smtpSender := mail.NewSender(
@@ -163,7 +164,7 @@ func main() {
 	mailEnq := queue.NewMailEnqueuer(queueClient)
 
 	// ---------- Services ----------
-	authSvc := service.NewAuthService(userRepo, sessionRepo, rateRepo, pwResetRepo, mailEnq,
+	authSvc := service.NewAuthService(userRepo, sessionRepo, rateRepo, pwResetRepo, emailVerifyRepo, mailEnq,
 		cfg.App.PublicFrontendURL,
 		passwordhash.Params{
 			Memory:      cfg.Argon2.MemoryKiB,

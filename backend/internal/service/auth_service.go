@@ -18,24 +18,28 @@ import (
 	"yulik3d/pkg/passwordhash"
 )
 
-// PasswordResetMailer — интерфейс отправки письма с токеном ресета.
-// Реализуется на уровне очереди (queue.Client). Сервис о asynq не знает.
-type PasswordResetMailer interface {
+// AuthMailer — интерфейс отправки писем, нужных для AuthService:
+// сброса пароля и подтверждения email. Реализуется на уровне очереди
+// (queue.Client). Сервис о asynq не знает.
+type AuthMailer interface {
 	EnqueuePasswordReset(ctx context.Context, to, userName, resetLink string) error
+	EnqueueEmailVerify(ctx context.Context, to, userName, verifyLink string) error
 }
 
-// AuthService — регистрация, логин, logout, профиль, восстановление пароля.
+// AuthService — регистрация, логин, logout, профиль, восстановление пароля,
+// подтверждение email.
 type AuthService struct {
-	users          *repository.UserRepo
-	sessions       *repository.SessionRepo
-	rate           *repository.RateLimitRepo
-	pwReset        *repository.PasswordResetRepo
-	mailer         PasswordResetMailer
-	frontendURL    string
-	argonParams    passwordhash.Params
-	sessionTTL     time.Duration
-	rateAttempt    int
-	rateWindow     time.Duration
+	users         *repository.UserRepo
+	sessions      *repository.SessionRepo
+	rate          *repository.RateLimitRepo
+	pwReset       *repository.PasswordResetRepo
+	emailVerify   *repository.EmailVerifyRepo
+	mailer        AuthMailer
+	frontendURL   string
+	argonParams   passwordhash.Params
+	sessionTTL    time.Duration
+	rateAttempt   int
+	rateWindow    time.Duration
 }
 
 func NewAuthService(
@@ -43,7 +47,8 @@ func NewAuthService(
 	sessions *repository.SessionRepo,
 	rate *repository.RateLimitRepo,
 	pwReset *repository.PasswordResetRepo,
-	mailer PasswordResetMailer,
+	emailVerify *repository.EmailVerifyRepo,
+	mailer AuthMailer,
 	frontendURL string,
 	argonParams passwordhash.Params,
 	sessionTTL time.Duration,
@@ -52,7 +57,8 @@ func NewAuthService(
 ) *AuthService {
 	return &AuthService{
 		users: users, sessions: sessions, rate: rate,
-		pwReset: pwReset, mailer: mailer, frontendURL: strings.TrimRight(frontendURL, "/"),
+		pwReset: pwReset, emailVerify: emailVerify, mailer: mailer,
+		frontendURL: strings.TrimRight(frontendURL, "/"),
 		argonParams: argonParams, sessionTTL: sessionTTL,
 		rateAttempt: rateAttempts, rateWindow: rateWindow,
 	}
@@ -102,7 +108,39 @@ func (s *AuthService) Register(ctx context.Context, req model.RegisterRequest, u
 		return SessionInfo{}, fmt.Errorf("create user: %w", err)
 	}
 
-	return s.openSession(ctx, u, ua, ip)
+	// Открываем сессию (юзер сразу залогинен — это базовое поведение,
+	// от которого зависит весь остальной фронт). Это происходит ДО любой
+	// работы с email-подтверждением — никакая ошибка с письмом не повлияет
+	// на саму авторизацию.
+	info, err := s.openSession(ctx, u, ua, ip)
+	if err != nil {
+		return SessionInfo{}, err
+	}
+
+	// Параллельно (best-effort) ставим письмо подтверждения email в очередь.
+	// Любые сбои здесь только логируются — регистрация уже успешна, юзер
+	// может позже запросить ссылку повторно через resend.
+	s.sendEmailVerify(ctx, u)
+
+	return info, nil
+}
+
+// sendEmailVerify — генерация токена подтверждения и постановка письма в
+// очередь. Все ошибки проглатываются (только лог) — это не должно ломать
+// бизнес-операции, в рамках которых вызывается.
+//
+// Используется в Register и в EmailVerifyResend.
+func (s *AuthService) sendEmailVerify(ctx context.Context, u model.User) {
+	token, err := s.emailVerify.CreateToken(ctx, u.ID)
+	if err != nil {
+		// Не критично — пользователь сможет запросить ещё раз через resend.
+		// (Глобального логгера в сервисе нет, см. PasswordResetRequest где log
+		// пробрасывается явно. Здесь сбой Redis тут будет и в throttle тоже
+		// и попадёт в общие логи приложения через хендлеры.)
+		return
+	}
+	verifyLink := s.frontendURL + "/verify-email?token=" + token
+	_ = s.mailer.EnqueueEmailVerify(ctx, u.Email, u.FullName, verifyLink)
 }
 
 // Login — вход. Учитывает rate-limit.
@@ -308,6 +346,76 @@ func (s *AuthService) PasswordResetConfirm(ctx context.Context, token, newPasswo
 			return model.NewNotFound("Пользователь не найден")
 		}
 		return fmt.Errorf("update password: %w", err)
+	}
+	return nil
+}
+
+// ---------- Подтверждение email ----------
+
+// EmailVerifyConfirm — установить email_verified=true по токену.
+// Токен инвалидируется атомарно (одноразовое использование).
+//
+// Эндпоинт публичный: пользователь мог быть разлогинен в момент клика по
+// ссылке. Сама валидация — только по токену, к сессии не привязана.
+func (s *AuthService) EmailVerifyConfirm(ctx context.Context, token string) error {
+	if strings.TrimSpace(token) == "" {
+		return model.NewInvalidInput("Токен не указан")
+	}
+	userID, err := s.emailVerify.ConsumeToken(ctx, token)
+	if err != nil {
+		if errors.Is(err, repository.ErrEmailVerifyTokenInvalid) {
+			return model.NewInvalidInput("Ссылка недействительна или срок её действия истёк")
+		}
+		return fmt.Errorf("consume email verify token: %w", err)
+	}
+	if err := s.users.SetEmailVerified(ctx, userID); err != nil {
+		return fmt.Errorf("set email verified: %w", err)
+	}
+	return nil
+}
+
+// EmailVerifyResend — отправить пользователю новое письмо подтверждения.
+//
+// Контракт идентичен PasswordResetRequest:
+//   - Всегда возвращает nil (не палим существование email)
+//   - Throttle 60 сек на email (защита от перебора)
+//   - Если email уже подтверждён — тихо игнорируем (письма не шлём)
+//   - Внутренние ошибки логируются, наружу не пробрасываются
+func (s *AuthService) EmailVerifyResend(ctx context.Context, log *slog.Logger, email string) error {
+	email = normalizeEmail(email)
+	if email == "" || !strings.Contains(email, "@") {
+		return nil
+	}
+	ok, err := s.emailVerify.AcquireThrottle(ctx, email)
+	if err != nil {
+		log.Error("emailverify throttle", "err", err, "email", email)
+		return nil
+	}
+	if !ok {
+		log.Info("emailverify throttled", "email", email)
+		return nil
+	}
+	u, err := s.users.GetByEmail(ctx, email)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			log.Info("emailverify: user not found", "email", email)
+			return nil
+		}
+		log.Error("emailverify get user", "err", err)
+		return nil
+	}
+	if u.EmailVerified {
+		log.Info("emailverify: already verified", "email", email)
+		return nil
+	}
+	token, err := s.emailVerify.CreateToken(ctx, u.ID)
+	if err != nil {
+		log.Error("emailverify create token", "err", err, "user_id", u.ID)
+		return nil
+	}
+	verifyLink := s.frontendURL + "/verify-email?token=" + token
+	if err := s.mailer.EnqueueEmailVerify(ctx, u.Email, u.FullName, verifyLink); err != nil {
+		log.Error("emailverify enqueue", "err", err, "user_id", u.ID)
 	}
 	return nil
 }

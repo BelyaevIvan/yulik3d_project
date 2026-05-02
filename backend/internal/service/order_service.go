@@ -97,6 +97,19 @@ func NewOrderService(
 
 // Create — создание заказа с полной проверкой цен.
 func (s *OrderService) Create(ctx context.Context, userID uuid.UUID, req model.OrderCreateRequest) (model.OrderDetailDTO, error) {
+	// Сначала — проверка email_verified. До любых других операций, чтобы
+	// неподтверждённый пользователь даже не дёргал лишние запросы к БД.
+	user, err := s.users.GetByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.OrderDetailDTO{}, model.NewNotFound("Пользователь не найден")
+		}
+		return model.OrderDetailDTO{}, fmt.Errorf("get user: %w", err)
+	}
+	if !user.EmailVerified {
+		return model.OrderDetailDTO{}, model.NewForbidden("Подтвердите email, прежде чем оформлять заказ")
+	}
+
 	if err := validateOrderReq(req); err != nil {
 		return model.OrderDetailDTO{}, err
 	}

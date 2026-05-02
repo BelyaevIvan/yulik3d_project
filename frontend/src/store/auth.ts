@@ -34,6 +34,21 @@ class AuthStore {
     this.emit();
   }
 
+  // refresh — перезагрузить данные пользователя с бэка. Используется когда
+  // часть полей могла измениться (например, email_verified стало true после
+  // подтверждения по ссылке из письма).
+  async refresh(): Promise<void> {
+    try {
+      this.user = await authApi.me();
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) {
+        this.user = null;
+      }
+    } finally {
+      this.emit();
+    }
+  }
+
   async logout(): Promise<void> {
     try { await authApi.logout(); } catch (e) { /* swallow */ }
     this.setUser(null);

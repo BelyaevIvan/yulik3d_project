@@ -37,6 +37,32 @@ func NewMailer(sender *Sender, supportContact string) (*Mailer, error) {
 // (а воркер логирует и идёт в retry — не блокирует основной флоу).
 func (m *Mailer) Configured() bool { return m.sender.Configured() }
 
+// ---------- Подтверждение email ----------
+
+type EmailVerifyData struct {
+	UserName   string
+	VerifyLink string
+	Footer     FooterCtx
+}
+
+func (m *Mailer) SendEmailVerify(to string, d EmailVerifyData) error {
+	d.Footer = m.footer
+	html, err := m.tpls.renderHTML("email_verify.html", d)
+	if err != nil {
+		return err
+	}
+	text, err := m.tpls.renderText("email_verify.txt", d)
+	if err != nil {
+		return err
+	}
+	return m.sender.Send(Message{
+		To:       to,
+		Subject:  "Подтверждение email на Yulik3D",
+		HTMLBody: html,
+		TextBody: text,
+	})
+}
+
 // ---------- Восстановление пароля ----------
 
 type PasswordResetData struct {

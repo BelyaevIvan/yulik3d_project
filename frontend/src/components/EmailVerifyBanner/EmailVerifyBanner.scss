@@ -1,0 +1,45 @@
+.email-verify-banner {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  background: rgba($accent-primary, 0.08);
+  border: 1px solid rgba($accent-primary, 0.4);
+  border-radius: $border-radius-md;
+  padding: $spacing-md $spacing-lg;
+  margin-bottom: $spacing-lg;
+  flex-wrap: wrap;
+
+  &__icon {
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+
+  &__body {
+    flex: 1 1 250px;
+  }
+
+  &__title {
+    font-size: $font-size-md;
+    font-weight: $font-weight-semibold;
+    color: $text-primary;
+    margin-bottom: 2px;
+  }
+
+  &__text {
+    font-size: $font-size-sm;
+    color: $text-secondary;
+    line-height: 1.5;
+  }
+
+  &__btn {
+    @include button-primary;
+    padding: $spacing-sm $spacing-md;
+    font-size: $font-size-sm;
+    flex-shrink: 0;
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+}

@@ -6,6 +6,7 @@ import { ApiError } from '@/api/client';
 import { router } from '@/router/router';
 import { toast } from '@/components/Toast/Toast';
 import { setPageMeta, clearProductJsonLd } from '@/utils/seo';
+import { renderEmailVerifyBanner } from '@/components/EmailVerifyBanner/EmailVerifyBanner';
 import './Cart.scss';
 
 const tpl = `
@@ -73,7 +74,7 @@ const tpl = `
           </div>
           <div class="cart__summary-field">
             <label>Комментарий</label>
-            <textarea id="cartComment" rows="3" placeholder="Пожелания к заказу"></textarea>
+            <textarea id="cartComment" rows="3" placeholder="Пожелания к заказу. Например: связь в телеграме, отправка сдеком"></textarea>
           </div>
         {{else}}
           <p class="cart__summary-note">После авторизации мы используем данные из вашего профиля.</p>
@@ -115,6 +116,10 @@ export class CartPage {
       total: cartStore.total(),
     });
 
+    // Если юзер залогинен, но email не подтверждён — показываем баннер сверху
+    // и предупреждаем, что без подтверждения нельзя оформить заказ.
+    renderEmailVerifyBanner(this.root);
+
     this.bindEvents();
   }
 
@@ -138,6 +143,15 @@ export class CartPage {
     });
 
     this.root.querySelector('#cartSubmit')?.addEventListener('click', async () => {
+      // Перепроверяем email_verified прямо перед отправкой — на всякий случай,
+      // если статус изменился между рендером страницы и кликом.
+      const cur = authStore.getUser();
+      if (cur && !cur.email_verified) {
+        toast.error('Подтвердите email перед оформлением заказа');
+        router.navigate('/profile');
+        return;
+      }
+
       const phone = (this.root.querySelector<HTMLInputElement>('#cartPhone')?.value || '').trim();
       const fullName = (this.root.querySelector<HTMLInputElement>('#cartFullName')?.value || '').trim();
       const comment = (this.root.querySelector<HTMLTextAreaElement>('#cartComment')?.value || '').trim();
@@ -168,6 +182,14 @@ export class CartPage {
           if (e.status === 401) {
             toast.error('Войдите в аккаунт');
             router.navigate('/login?next=/cart');
+            return;
+          }
+          if (e.status === 403) {
+            // Скорее всего: email не подтверждён. Подтянем свежий профиль
+            // и отправим в /profile, чтобы юзер увидел баннер с кнопкой resend.
+            toast.error(e.message);
+            await authStore.refresh();
+            router.navigate('/profile');
             return;
           }
           toast.error(e.message);
