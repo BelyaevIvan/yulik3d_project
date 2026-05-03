@@ -2,6 +2,8 @@ import { authApi } from '@/api/auth';
 import { ApiError } from '@/api/client';
 import { authStore } from '@/store/auth';
 import { toast } from '@/components/Toast/Toast';
+import { modal } from '@/components/Modal/Modal';
+import { mountCaptcha } from '@/components/Captcha/Captcha';
 import './EmailVerifyBanner.scss';
 
 const RESEND_COOLDOWN_SEC = 60;
@@ -35,17 +37,48 @@ export function renderEmailVerifyBanner(host: HTMLElement): void {
   btn.addEventListener('click', () => onResendClick(btn, user.email));
 }
 
-async function onResendClick(btn: HTMLButtonElement, email: string): Promise<void> {
-  btn.disabled = true;
-  try {
-    await authApi.emailVerifyResend(email);
-    toast.success('Письмо отправлено. Проверьте почту (включая папку «Спам»).');
-    startCooldown(btn, RESEND_COOLDOWN_SEC);
-  } catch (e) {
-    btn.disabled = false;
-    if (e instanceof ApiError) toast.error(e.message);
-    else toast.error('Не удалось отправить письмо');
-  }
+// onResendClick — открывает модалку с капчей. После прохождения капчи
+// фронт шлёт запрос на бэк, и при успехе включает cooldown на основной кнопке.
+function onResendClick(btn: HTMLButtonElement, email: string): void {
+  modal.open({
+    title: 'Отправить письмо повторно',
+    body: `
+      <p style="margin:0 0 12px;color:#a0a0c0;">
+        На <strong>${escapeHtml(email)}</strong> будет отправлена новая ссылка для подтверждения email.
+      </p>
+      <div id="bannerResendCaptcha" style="margin-bottom:12px;"></div>
+      <div id="bannerResendErr" style="display:none;color:#f44;font-size:13px;margin-bottom:12px;"></div>
+    `,
+    footer: `
+      <button data-cancel style="padding:8px 16px;background:#141450;color:#fff;border:1px solid #2a2a5a;border-radius:6px;">Отмена</button>
+      <button data-send class="admin__btn" style="padding:8px 16px;">Отправить</button>
+    `,
+    onMount: (root) => {
+      const captchaHost = root.querySelector<HTMLElement>('#bannerResendCaptcha')!;
+      const errEl = root.querySelector<HTMLElement>('#bannerResendErr');
+      let handle: import('@/components/Captcha/Captcha').CaptchaHandle | null = null;
+      mountCaptcha(captchaHost).then((h) => { handle = h; });
+
+      root.querySelector('[data-cancel]')?.addEventListener('click', () => modal.close());
+      root.querySelector('[data-send]')?.addEventListener('click', async () => {
+        const token = handle?.getToken() || '';
+        if (!token) {
+          if (errEl) { errEl.textContent = 'Подтвердите, что вы не робот'; errEl.style.display = 'block'; }
+          return;
+        }
+        try {
+          await authApi.emailVerifyResend(email, token);
+          modal.close();
+          toast.success('Письмо отправлено. Проверьте почту (включая папку «Спам»).');
+          startCooldown(btn, RESEND_COOLDOWN_SEC);
+        } catch (e) {
+          handle?.reset();
+          const msg = e instanceof ApiError ? e.message : 'Не удалось отправить письмо';
+          if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
+        }
+      });
+    },
+  });
 }
 
 function startCooldown(btn: HTMLButtonElement, seconds: number): void {

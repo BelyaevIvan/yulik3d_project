@@ -6,6 +6,7 @@ export interface RegisterRequest {
   password: string;
   full_name: string;
   phone?: string;
+  captcha_token?: string;
 }
 
 export interface LoginRequest {
@@ -27,8 +28,11 @@ export const authApi = {
   me: () => request<UserDTO>('/me'),
   updateMe: (req: UpdateMeRequest) => request<UserDTO>('/me', { method: 'PATCH', body: req }),
 
-  passwordResetRequest: (email: string) =>
-    request<{ ok: boolean }>('/auth/password/reset-request', { method: 'POST', body: { email } }),
+  passwordResetRequest: (email: string, captchaToken: string) =>
+    request<{ ok: boolean }>('/auth/password/reset-request', {
+      method: 'POST',
+      body: { email, captcha_token: captchaToken },
+    }),
   passwordResetConfirm: (token: string, newPassword: string) =>
     request<{ ok: boolean }>('/auth/password/reset-confirm', {
       method: 'POST',
@@ -37,6 +41,9 @@ export const authApi = {
 
   emailVerifyConfirm: (token: string) =>
     request<{ ok: boolean }>('/auth/email/verify', { method: 'POST', body: { token } }),
-  emailVerifyResend: (email: string) =>
-    request<{ ok: boolean }>('/auth/email/verify/resend', { method: 'POST', body: { email } }),
+  emailVerifyResend: (email: string, captchaToken: string) =>
+    request<{ ok: boolean }>('/auth/email/verify/resend', {
+      method: 'POST',
+      body: { email, captcha_token: captchaToken },
+    }),
 };

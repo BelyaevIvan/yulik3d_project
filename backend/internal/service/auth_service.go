@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	"yulik3d/internal/captcha"
 	"yulik3d/internal/model"
 	"yulik3d/internal/repository"
 	"yulik3d/pkg/passwordhash"
@@ -35,6 +36,7 @@ type AuthService struct {
 	pwReset       *repository.PasswordResetRepo
 	emailVerify   *repository.EmailVerifyRepo
 	mailer        AuthMailer
+	captcha       captcha.Verifier
 	frontendURL   string
 	argonParams   passwordhash.Params
 	sessionTTL    time.Duration
@@ -49,6 +51,7 @@ func NewAuthService(
 	pwReset *repository.PasswordResetRepo,
 	emailVerify *repository.EmailVerifyRepo,
 	mailer AuthMailer,
+	captchaVerifier captcha.Verifier,
 	frontendURL string,
 	argonParams passwordhash.Params,
 	sessionTTL time.Duration,
@@ -58,10 +61,28 @@ func NewAuthService(
 	return &AuthService{
 		users: users, sessions: sessions, rate: rate,
 		pwReset: pwReset, emailVerify: emailVerify, mailer: mailer,
+		captcha: captchaVerifier,
 		frontendURL: strings.TrimRight(frontendURL, "/"),
 		argonParams: argonParams, sessionTTL: sessionTTL,
 		rateAttempt: rateAttempts, rateWindow: rateWindow,
 	}
+}
+
+// checkCaptcha — единая обёртка проверки. Конвертирует ошибки captcha-пакета
+// в наши доменные модели для единообразного отображения на фронте.
+func (s *AuthService) checkCaptcha(ctx context.Context, token, ip string) error {
+	err := s.captcha.Verify(ctx, token, ip)
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, captcha.ErrCaptchaFailed) {
+		return model.NewInvalidInput("Не удалось пройти проверку «Я не робот». Попробуйте ещё раз.")
+	}
+	if errors.Is(err, captcha.ErrCaptchaUnavailable) {
+		return model.NewInvalidInput("Сервис проверки временно недоступен. Попробуйте через минуту.")
+	}
+	// Неожиданная ошибка — не пропускаем, чтобы не дать дыру.
+	return model.NewInvalidInput("Не удалось пройти проверку «Я не робот»")
 }
 
 // SessionInfo — результат создания сессии.
@@ -73,6 +94,12 @@ type SessionInfo struct {
 
 // Register — создать юзера + залогинить. Возвращает сессию для установки cookie.
 func (s *AuthService) Register(ctx context.Context, req model.RegisterRequest, ua, ip string) (SessionInfo, error) {
+	// Капча — первой проверкой, до любых обращений к БД и любых проверок,
+	// чтобы бот не мог даже перебирать email-ы по таймингу ответа.
+	if err := s.checkCaptcha(ctx, req.CaptchaToken, ip); err != nil {
+		return SessionInfo{}, err
+	}
+
 	// Формальная валидация — сервисный слой
 	req.Email = normalizeEmail(req.Email)
 	if err := validateRegister(req); err != nil {
@@ -273,11 +300,15 @@ func (s *AuthService) UpdateMe(ctx context.Context, userID uuid.UUID, req model.
 // PasswordResetRequest — пользователь запрашивает ссылку на сброс пароля.
 //
 // Контракт:
-//   - Всегда возвращает nil (не палит существование email — защита от перебора).
+//   - Капча проверяется ДО всего: если не прошла → 400 (не пускаем дальше).
+//   - Если капча ОК — всегда возвращает nil (не палит существование email).
 //   - Если email найден И throttle прошёл → создаёт токен и кладёт письмо в очередь.
 //   - Иначе — тихо игнорирует.
 //   - Внутренние ошибки (Redis недоступен, БД недоступна) логируются, наружу не пробрасываются.
-func (s *AuthService) PasswordResetRequest(ctx context.Context, log *slog.Logger, email string) error {
+func (s *AuthService) PasswordResetRequest(ctx context.Context, log *slog.Logger, email, captchaToken, ip string) error {
+	if err := s.checkCaptcha(ctx, captchaToken, ip); err != nil {
+		return err
+	}
 	email = normalizeEmail(email)
 	if email == "" || !strings.Contains(email, "@") {
 		return nil // некорректный email — тихо игнор, чтобы не дать сигнал атакующему
@@ -377,11 +408,15 @@ func (s *AuthService) EmailVerifyConfirm(ctx context.Context, token string) erro
 // EmailVerifyResend — отправить пользователю новое письмо подтверждения.
 //
 // Контракт идентичен PasswordResetRequest:
-//   - Всегда возвращает nil (не палим существование email)
-//   - Throttle 60 сек на email (защита от перебора)
-//   - Если email уже подтверждён — тихо игнорируем (письма не шлём)
-//   - Внутренние ошибки логируются, наружу не пробрасываются
-func (s *AuthService) EmailVerifyResend(ctx context.Context, log *slog.Logger, email string) error {
+//   - Капча проверяется первой; не прошла → 400.
+//   - Дальше — всегда возвращает nil (не палим существование email).
+//   - Throttle 60 сек на email (защита от перебора).
+//   - Если email уже подтверждён — тихо игнорируем (письма не шлём).
+//   - Внутренние ошибки логируются, наружу не пробрасываются.
+func (s *AuthService) EmailVerifyResend(ctx context.Context, log *slog.Logger, email, captchaToken, ip string) error {
+	if err := s.checkCaptcha(ctx, captchaToken, ip); err != nil {
+		return err
+	}
 	email = normalizeEmail(email)
 	if email == "" || !strings.Contains(email, "@") {
 		return nil

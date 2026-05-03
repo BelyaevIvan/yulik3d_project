@@ -160,6 +160,10 @@ services:
 
       EMAIL_VERIFY_TOKEN_TTL_SECONDS: ${EMAIL_VERIFY_TOKEN_TTL_SECONDS}
       EMAIL_VERIFY_THROTTLE_SECONDS: ${EMAIL_VERIFY_THROTTLE_SECONDS}
+
+      CAPTCHA_ENABLED: ${CAPTCHA_ENABLED}
+      CAPTCHA_SERVER_KEY: ${CAPTCHA_SERVER_KEY}
+      CAPTCHA_ENDPOINT: ${CAPTCHA_ENDPOINT}
     ports:
       # Снаружи можно открыть на любом порту (если 8080 занят — поменять в .env)
       - "${BACKEND_EXTERNAL_PORT:-8080}:8080"
@@ -170,6 +174,12 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        # VITE_*-переменные читаются из корневого .env через docker-compose
+        # и пробрасываются в Dockerfile фронта. Иначе при сборке npm run build
+        # они окажутся пустыми, и виджет капчи не подгрузится.
+        VITE_BACKEND_URL: ${VITE_BACKEND_URL:-}
+        VITE_YANDEX_CAPTCHA_KEY: ${VITE_YANDEX_CAPTCHA_KEY:-}
     container_name: yulik3d-frontend
     restart: unless-stopped
     depends_on:

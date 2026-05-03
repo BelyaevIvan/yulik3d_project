@@ -161,8 +161,12 @@ func (h *AuthHandler) PasswordResetRequest(w http.ResponseWriter, r *http.Reques
 		h.Err(w, r, err)
 		return
 	}
-	// Сервис всегда возвращает nil — внутренние ошибки логируются, наружу не текут.
-	_ = h.auth.PasswordResetRequest(r.Context(), h.Log, req.Email)
+	// Капча может вернуть ошибку — пробрасываем (400). Остальные сценарии
+	// (email не существует, throttle, успех) сервис маскирует под 200.
+	if err := h.auth.PasswordResetRequest(r.Context(), h.Log, req.Email, req.CaptchaToken, ClientIP(r)); err != nil {
+		h.Err(w, r, err)
+		return
+	}
 	OK(w, model.OKResponse{OK: true})
 }
 
@@ -205,7 +209,10 @@ func (h *AuthHandler) EmailVerifyResend(w http.ResponseWriter, r *http.Request) 
 		h.Err(w, r, err)
 		return
 	}
-	_ = h.auth.EmailVerifyResend(r.Context(), h.Log, req.Email)
+	if err := h.auth.EmailVerifyResend(r.Context(), h.Log, req.Email, req.CaptchaToken, ClientIP(r)); err != nil {
+		h.Err(w, r, err)
+		return
+	}
 	OK(w, model.OKResponse{OK: true})
 }
 

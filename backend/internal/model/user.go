@@ -54,10 +54,11 @@ func (u *User) ToDTO() UserDTO {
 
 // RegisterRequest — тело POST /auth/register.
 type RegisterRequest struct {
-	Email    string  `json:"email" example:"user@example.com"`
-	Password string  `json:"password" example:"strongpass123"`
-	FullName string  `json:"full_name" example:"Иван Петров"`
-	Phone    *string `json:"phone,omitempty" example:"+79991234567"`
+	Email        string  `json:"email" example:"user@example.com"`
+	Password     string  `json:"password" example:"strongpass123"`
+	FullName     string  `json:"full_name" example:"Иван Петров"`
+	Phone        *string `json:"phone,omitempty" example:"+79991234567"`
+	CaptchaToken string  `json:"captcha_token" example:"<токен от Yandex SmartCaptcha>"`
 }
 
 // LoginRequest — тело POST /auth/login.
@@ -78,7 +79,8 @@ type UpdateMeRequest struct {
 
 // PasswordResetRequestDTO — тело POST /auth/password/reset-request.
 type PasswordResetRequestDTO struct {
-	Email string `json:"email" example:"user@example.com"`
+	Email        string `json:"email" example:"user@example.com"`
+	CaptchaToken string `json:"captcha_token" example:"<токен от Yandex SmartCaptcha>"`
 }
 
 // PasswordResetConfirmDTO — тело POST /auth/password/reset-confirm.
@@ -94,7 +96,8 @@ type EmailVerifyConfirmDTO struct {
 
 // EmailVerifyResendDTO — тело POST /auth/email/verify/resend.
 type EmailVerifyResendDTO struct {
-	Email string `json:"email" example:"user@example.com"`
+	Email        string `json:"email" example:"user@example.com"`
+	CaptchaToken string `json:"captcha_token" example:"<токен от Yandex SmartCaptcha>"`
 }
 
 // OKResponse — стандартный ответ {"ok": true} для эндпоинтов без полезной нагрузки.

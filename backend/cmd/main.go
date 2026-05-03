@@ -32,6 +32,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"yulik3d/config"
+	"yulik3d/internal/captcha"
 	"yulik3d/internal/handler"
 	"yulik3d/internal/mail"
 	"yulik3d/internal/middleware"
@@ -163,8 +164,23 @@ func main() {
 
 	mailEnq := queue.NewMailEnqueuer(queueClient)
 
+	// ---------- Captcha ----------
+	// FailClosed в production (безопасность важнее), FailOpen в development
+	// (чтобы локальная разработка не страдала от лагающего интернета).
+	captchaMode := captcha.FailClosed
+	if cfg.App.Env != "production" {
+		captchaMode = captcha.FailOpen
+	}
+	captchaVer := captcha.New(
+		cfg.Captcha.Enabled,
+		cfg.Captcha.Endpoint,
+		cfg.Captcha.ServerKey,
+		captchaMode,
+		log,
+	)
+
 	// ---------- Services ----------
-	authSvc := service.NewAuthService(userRepo, sessionRepo, rateRepo, pwResetRepo, emailVerifyRepo, mailEnq,
+	authSvc := service.NewAuthService(userRepo, sessionRepo, rateRepo, pwResetRepo, emailVerifyRepo, mailEnq, captchaVer,
 		cfg.App.PublicFrontendURL,
 		passwordhash.Params{
 			Memory:      cfg.Argon2.MemoryKiB,

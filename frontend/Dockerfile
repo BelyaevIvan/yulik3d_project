@@ -8,6 +8,14 @@ WORKDIR /src
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY . .
+
+# VITE_*-переменные приходят как build args из docker-compose.
+# Vite использует только значения, начинающиеся на VITE_, и вшивает их в собранный JS.
+ARG VITE_BACKEND_URL=
+ARG VITE_YANDEX_CAPTCHA_KEY=
+ENV VITE_BACKEND_URL=$VITE_BACKEND_URL \
+    VITE_YANDEX_CAPTCHA_KEY=$VITE_YANDEX_CAPTCHA_KEY
+
 RUN npm run build
 
 # ----- Runtime stage (nginx) ----------------------------------------------
