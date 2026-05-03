@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/google/uuid"
@@ -18,6 +19,7 @@ type AdminItemService struct {
 	itemOptions   *repository.ItemOptionRepo
 	optionTypes   *repository.OptionTypeRepo
 	subcategories *repository.SubcategoryRepo
+	mainPin       *repository.ItemMainPinRepo
 	catalog       *CatalogService
 	tx            *repository.TxManager
 }
@@ -27,10 +29,91 @@ func NewAdminItemService(
 	itemOptions *repository.ItemOptionRepo,
 	optionTypes *repository.OptionTypeRepo,
 	subcategories *repository.SubcategoryRepo,
+	mainPin *repository.ItemMainPinRepo,
 	catalog *CatalogService,
 	tx *repository.TxManager,
 ) *AdminItemService {
-	return &AdminItemService{items: items, itemOptions: itemOptions, optionTypes: optionTypes, subcategories: subcategories, catalog: catalog, tx: tx}
+	return &AdminItemService{items: items, itemOptions: itemOptions, optionTypes: optionTypes,
+		subcategories: subcategories, mainPin: mainPin, catalog: catalog, tx: tx}
+}
+
+// syncMainPinAfterItemChange — после изменения товара (Update/Patch) синхронизирует
+// закрепления на главной с актуальным состоянием:
+//   - если товар стал hidden → снимаем все закрепления
+//   - иначе оставляем только те закрепления, типы которых ещё актуальны
+//     (товар по-прежнему относится к этому типу через свои подкатегории)
+//
+// Все ошибки логируются и проглатываются — основной апдейт уже произошёл.
+// После Unpin нужно сжать позиции в затронутом типе (Compact).
+// logFn — упрощённая обёртка над slog.Default для адаптивного logging
+// без необходимости таскать *slog.Logger в этом сервисе.
+func logErr(msg string, args ...any) {
+	slog.Default().Error(msg, args...)
+}
+
+func (s *AdminItemService) syncMainPinAfterItemChange(ctx context.Context, itemID uuid.UUID, log func(msg string, args ...any)) {
+	it, err := s.items.GetByID(ctx, itemID)
+	if err != nil {
+		log("sync main_pin: get item", "err", err, "item_id", itemID)
+		return
+	}
+	pins, err := s.mainPin.ListByItem(ctx, itemID)
+	if err != nil {
+		log("sync main_pin: list pins", "err", err, "item_id", itemID)
+		return
+	}
+	if len(pins) == 0 {
+		return
+	}
+
+	if it.Hidden {
+		// Скрытый товар — снимаем со всех закреплений и уплотняем оба типа.
+		// Всё в одной транзакции: при сбое не должно остаться «дырок» в позициях.
+		err := s.tx.Run(ctx, func(ctx context.Context) error {
+			if err := s.mainPin.DeleteByItem(ctx, itemID); err != nil {
+				return fmt.Errorf("delete by item: %w", err)
+			}
+			for _, p := range pins {
+				if err := s.mainPin.Compact(ctx, p.Type); err != nil {
+					return fmt.Errorf("compact %s: %w", p.Type, err)
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			log("sync main_pin: hide tx", "err", err, "item_id", itemID)
+		}
+		return
+	}
+
+	// Не скрыт — проверяем актуальность типов через подкатегории.
+	types, err := s.items.CategoryTypesForItem(ctx, itemID)
+	if err != nil {
+		log("sync main_pin: types for item", "err", err, "item_id", itemID)
+		return
+	}
+	typeSet := make(map[model.CategoryType]bool, len(types))
+	for _, t := range types {
+		typeSet[t] = true
+	}
+	for _, p := range pins {
+		if typeSet[p.Type] {
+			continue // тип ещё актуален, закрепление остаётся
+		}
+		// Атомарно: удалить + уплотнить.
+		err := s.tx.Run(ctx, func(ctx context.Context) error {
+			if _, err := s.mainPin.DeleteByItemAndType(ctx, itemID, p.Type); err != nil {
+				return fmt.Errorf("delete by type: %w", err)
+			}
+			if err := s.mainPin.Compact(ctx, p.Type); err != nil {
+				return fmt.Errorf("compact: %w", err)
+			}
+			return nil
+		})
+		if err != nil {
+			log("sync main_pin: type-loss tx", "err", err, "item_id", itemID, "type", p.Type)
+		}
+	}
 }
 
 func (s *AdminItemService) Create(ctx context.Context, req model.ItemCreateRequest) (model.ItemDetailDTO, error) {
@@ -169,6 +252,8 @@ func (s *AdminItemService) Update(ctx context.Context, id uuid.UUID, req model.I
 	if err != nil {
 		return model.ItemDetailDTO{}, err
 	}
+	// Подкатегории/скрытость могли поменяться — синхронизируем закрепления.
+	s.syncMainPinAfterItemChange(ctx, id, logErr)
 	it, err := s.items.GetByID(ctx, id)
 	if err != nil {
 		return model.ItemDetailDTO{}, fmt.Errorf("reload: %w", err)
@@ -206,6 +291,10 @@ func (s *AdminItemService) Patch(ctx context.Context, id uuid.UUID, p model.Item
 			return model.ItemDetailDTO{}, model.NewNotFound("Товар не найден")
 		}
 		return model.ItemDetailDTO{}, fmt.Errorf("patch item: %w", err)
+	}
+	// Если поменяли hidden — синхронизируем закрепления.
+	if p.Hidden != nil {
+		s.syncMainPinAfterItemChange(ctx, id, logErr)
 	}
 	return s.catalog.composeDetail(ctx, it)
 }

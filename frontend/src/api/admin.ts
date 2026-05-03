@@ -102,4 +102,17 @@ export const adminApi = {
     request<OrderAdminDetailDTO>(`/admin/orders/${id}/status`, { method: 'PATCH', body: { status } }),
   patchOrderNote: (id: string, admin_note: string | null) =>
     request<OrderAdminDetailDTO>(`/admin/orders/${id}`, { method: 'PATCH', body: { admin_note } }),
+
+  // Main page (закрепления товаров на главной)
+  mainPageList: () =>
+    request<{ figures: ItemCardDTO[]; others: ItemCardDTO[] }>('/admin/main'),
+  mainPagePin: (item_id: string, type: CategoryType, position?: number) =>
+    request<{ ok: boolean }>('/admin/main', {
+      method: 'POST',
+      body: position !== undefined ? { item_id, type, position } : { item_id, type },
+    }),
+  mainPageUnpin: (type: CategoryType, item_id: string) =>
+    request<{ ok: boolean }>(`/admin/main/${type}/${item_id}`, { method: 'DELETE' }),
+  mainPageReorder: (type: CategoryType, order: { item_id: string; position: number }[]) =>
+    request<{ ok: boolean }>(`/admin/main/${type}/reorder`, { method: 'PATCH', body: { order } }),
 };

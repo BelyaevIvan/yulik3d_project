@@ -5,12 +5,13 @@ import { router } from '@/router/router';
 import { setPageMeta, clearProductJsonLd } from '@/utils/seo';
 import './AdminLayout.scss';
 
-export type AdminSection = 'items' | 'categories' | 'options' | 'orders';
+export type AdminSection = 'items' | 'categories' | 'options' | 'orders' | 'main-page';
 
 const tpl = `
 <div class="admin">
   <aside class="admin__sidebar">
     <a href="/admin" data-link class="admin__sidebar-link {{#if (eq active "items")}}admin__sidebar-link--active{{/if}}">📦 Товары</a>
+    <a href="/admin/main-page" data-link class="admin__sidebar-link {{#if (eq active "main-page")}}admin__sidebar-link--active{{/if}}">🏠 Главная страница</a>
     <a href="/admin/orders" data-link class="admin__sidebar-link {{#if (eq active "orders")}}admin__sidebar-link--active{{/if}}">🧾 Заказы</a>
     <a href="/admin/categories" data-link class="admin__sidebar-link {{#if (eq active "categories")}}admin__sidebar-link--active{{/if}}">🏷️ Категории</a>
     <a href="/admin/option-types" data-link class="admin__sidebar-link {{#if (eq active "options")}}admin__sidebar-link--active{{/if}}">⚙️ Типы опций</a>
@@ -39,6 +40,7 @@ export function renderAdminShell(root: HTMLElement, active: AdminSection): HTMLE
     orders: 'Админ — Заказы',
     categories: 'Админ — Категории',
     options: 'Админ — Типы опций',
+    'main-page': 'Админ — Главная страница',
   };
   setPageMeta({ title: titles[active], noindex: true });
   clearProductJsonLd();

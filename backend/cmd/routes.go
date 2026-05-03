@@ -9,17 +9,18 @@ import (
 type mw = func(http.Handler) http.Handler
 
 type routes struct {
-	health        *handler.HealthHandler
-	auth          *handler.AuthHandler
-	catalog       *handler.CatalogHandler
-	favorite      *handler.FavoriteHandler
-	order         *handler.OrderHandler
-	adminItem     *handler.AdminItemHandler
-	adminPicture  *handler.AdminPictureHandler
-	adminOption   *handler.AdminOptionHandler
-	adminCategory *handler.AdminCategoryHandler
-	adminOrder    *handler.AdminOrderHandler
-	sitemap       *handler.SitemapHandler
+	health         *handler.HealthHandler
+	auth           *handler.AuthHandler
+	catalog        *handler.CatalogHandler
+	favorite       *handler.FavoriteHandler
+	order          *handler.OrderHandler
+	adminItem      *handler.AdminItemHandler
+	adminPicture   *handler.AdminPictureHandler
+	adminOption    *handler.AdminOptionHandler
+	adminCategory  *handler.AdminCategoryHandler
+	adminOrder     *handler.AdminOrderHandler
+	adminMainPage  *handler.AdminMainPageHandler
+	sitemap        *handler.SitemapHandler
 
 	requireAuth  mw
 	requireAdmin mw
@@ -51,6 +52,7 @@ func registerRoutes(mux *http.ServeMux, r *routes) {
 
 	// Catalog (public)
 	mux.HandleFunc("GET "+base+"/items", r.catalog.ListItems)
+	mux.HandleFunc("GET "+base+"/items/main", r.catalog.MainPage)
 	mux.HandleFunc("GET "+base+"/items/{id}", r.catalog.GetItem)
 	mux.HandleFunc("GET "+base+"/categories", r.catalog.ListCategories)
 	mux.HandleFunc("GET "+base+"/categories/{id}/subcategories", r.catalog.ListSubcategories)
@@ -103,6 +105,12 @@ func registerRoutes(mux *http.ServeMux, r *routes) {
 	mux.Handle("POST "+base+"/admin/categories/{id}/subcategories", admin(r.adminCategory.CreateSubcategory))
 	mux.Handle("PATCH "+base+"/admin/subcategories/{id}", admin(r.adminCategory.PatchSubcategory))
 	mux.Handle("DELETE "+base+"/admin/subcategories/{id}", admin(r.adminCategory.DeleteSubcategory))
+
+	// admin main-page (закрепления)
+	mux.Handle("GET "+base+"/admin/main", admin(r.adminMainPage.List))
+	mux.Handle("POST "+base+"/admin/main", admin(r.adminMainPage.Pin))
+	mux.Handle("DELETE "+base+"/admin/main/{type}/{item_id}", admin(r.adminMainPage.Unpin))
+	mux.Handle("PATCH "+base+"/admin/main/{type}/reorder", admin(r.adminMainPage.Reorder))
 
 	// admin orders
 	mux.Handle("GET "+base+"/admin/orders", admin(r.adminOrder.List))

@@ -131,6 +131,7 @@ func main() {
 	orderRepo := repository.NewOrderRepo(db)
 	pwResetRepo := repository.NewPasswordResetRepo(rdb, cfg.PasswordReset.TokenTTL, cfg.PasswordReset.Throttle)
 	emailVerifyRepo := repository.NewEmailVerifyRepo(rdb, cfg.EmailVerify.TokenTTL, cfg.EmailVerify.Throttle)
+	mainPinRepo := repository.NewItemMainPinRepo(db)
 
 	// ---------- Mail + Queue ----------
 	smtpSender := mail.NewSender(
@@ -192,14 +193,15 @@ func main() {
 		cfg.RateLimit.AuthWindow,
 	)
 	catalogSvc := service.NewCatalogService(itemRepo, pictureRepo, itemOptionRepo, optionTypeRepo,
-		itemSubRepo, categoryRepo, subcategoryRepo, minioSvc)
+		itemSubRepo, categoryRepo, subcategoryRepo, mainPinRepo, minioSvc)
 	favoriteSvc := service.NewFavoriteService(favoriteRepo, itemRepo, catalogSvc)
 	orderSvc := service.NewOrderService(orderRepo, itemRepo, itemOptionRepo, optionTypeRepo, userRepo, tx,
 		mailEnq, cfg.App.PublicFrontendURL, cfg.Mail.AdminNotify, log)
-	adminItemSvc := service.NewAdminItemService(itemRepo, itemOptionRepo, optionTypeRepo, subcategoryRepo, catalogSvc, tx)
+	adminItemSvc := service.NewAdminItemService(itemRepo, itemOptionRepo, optionTypeRepo, subcategoryRepo, mainPinRepo, catalogSvc, tx)
 	adminPictureSvc := service.NewAdminPictureService(itemRepo, pictureRepo, minioSvc, tx, cfg.Uploads.MaxBytes)
 	adminOptionSvc := service.NewAdminOptionService(optionTypeRepo, itemOptionRepo, itemRepo)
 	adminCategorySvc := service.NewAdminCategoryService(categoryRepo, subcategoryRepo)
+	adminMainPageSvc := service.NewAdminMainPageService(mainPinRepo, itemRepo, catalogSvc, tx, log)
 
 	// ---------- Cookie options ----------
 	cookieOpts := cookie.Options{
@@ -223,6 +225,7 @@ func main() {
 	adminOptionH := handler.NewAdminOptionHandler(deps, adminOptionSvc)
 	adminCategoryH := handler.NewAdminCategoryHandler(deps, adminCategorySvc)
 	adminOrderH := handler.NewAdminOrderHandler(deps, orderSvc)
+	adminMainPageH := handler.NewAdminMainPageHandler(deps, adminMainPageSvc)
 	sitemapH := handler.NewSitemapHandler(deps, itemRepo, cfg.App.PublicBackendURL)
 
 	// ---------- Middleware ----------
@@ -246,6 +249,7 @@ func main() {
 		adminOption:    adminOptionH,
 		adminCategory:  adminCategoryH,
 		adminOrder:     adminOrderH,
+		adminMainPage:  adminMainPageH,
 		sitemap:        sitemapH,
 		requireAuth:    requireAuth,
 		requireAdmin:   requireAdmin,

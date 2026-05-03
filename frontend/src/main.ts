@@ -23,6 +23,7 @@ import { OrderDetailPage } from './pages/Orders/OrderDetail';
 import { AdminItemsPage } from './pages/Admin/AdminItems';
 import { AdminItemFormPage } from './pages/Admin/AdminItemForm';
 import { AdminCategoriesPage } from './pages/Admin/AdminCategories';
+import { AdminMainPagePage } from './pages/Admin/AdminMainPage';
 import { AdminOptionTypesPage } from './pages/Admin/AdminOptionTypes';
 import { AdminOrdersPage, AdminOrderDetailPage } from './pages/Admin/AdminOrders';
 import { NotFoundPage } from './pages/Errors/NotFound';
@@ -96,6 +97,7 @@ class App {
     router.addRoute('/admin/items/new', () => { set(''); new AdminItemFormPage(this.contentEl).render(); });
     router.addRoute('/admin/items/:id', (p) => { set(''); new AdminItemFormPage(this.contentEl, p.id).render(); });
     router.addRoute('/admin/categories', () => { set(''); new AdminCategoriesPage(this.contentEl).render(); });
+    router.addRoute('/admin/main-page', () => { set(''); new AdminMainPagePage(this.contentEl).render(); });
     router.addRoute('/admin/option-types', () => { set(''); new AdminOptionTypesPage(this.contentEl).render(); });
     router.addRoute('/admin/orders', () => { set(''); new AdminOrdersPage(this.contentEl).render(); });
     router.addRoute('/admin/orders/:id', (p) => { set(''); new AdminOrderDetailPage(this.contentEl, p.id).render(); });
