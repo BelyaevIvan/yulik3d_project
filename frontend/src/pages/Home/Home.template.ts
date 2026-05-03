@@ -21,7 +21,7 @@ export const homeTemplate = `
           <span class="home__hero-cta">Перейти →</span>
         </div>
       </a>
-      <a href="/figurines?has_sale=true" data-link class="home__hero-card home__hero-card--sale">
+      <a href="/search?has_sale=true" data-link class="home__hero-card home__hero-card--sale">
         <div class="home__hero-bg" style="background-image: url('/hero-sale.jpg')"></div>
         <div class="home__hero-content">
           <span class="home__hero-tag home__hero-tag--accent">Скидки</span>

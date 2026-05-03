@@ -17,44 +17,48 @@ const (
 // User — entity. Хранит всё, что есть в БД, включая PasswordHash.
 // Никогда не сериализуется напрямую в JSON.
 type User struct {
-	ID           uuid.UUID
-	Email        string
-	PasswordHash string
-	FullName     string
-	Phone        *string
-	Role         Role
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID            uuid.UUID
+	Email         string
+	PasswordHash  string
+	FullName      string
+	Phone         *string
+	Role          Role
+	EmailVerified bool
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 // UserDTO — DTO для API. Не содержит PasswordHash.
 type UserDTO struct {
-	ID        uuid.UUID `json:"id" example:"018f7d3e-4a5b-7c9d-a0b1-c2d3e4f5a6b7"`
-	Email     string    `json:"email" example:"user@example.com"`
-	FullName  string    `json:"full_name" example:"Иван Петров"`
-	Phone     *string   `json:"phone,omitempty" example:"+79991234567"`
-	Role      Role      `json:"role" example:"user"`
-	CreatedAt time.Time `json:"created_at"`
+	ID            uuid.UUID `json:"id" example:"018f7d3e-4a5b-7c9d-a0b1-c2d3e4f5a6b7"`
+	Email         string    `json:"email" example:"user@example.com"`
+	FullName      string    `json:"full_name" example:"Иван Петров"`
+	Phone         *string   `json:"phone,omitempty" example:"+79991234567"`
+	Role          Role      `json:"role" example:"user"`
+	EmailVerified bool      `json:"email_verified" example:"false"`
+	CreatedAt     time.Time `json:"created_at"`
 }
 
 // ToDTO конвертирует entity в DTO, отбрасывая sensitive поля.
 func (u *User) ToDTO() UserDTO {
 	return UserDTO{
-		ID:        u.ID,
-		Email:     u.Email,
-		FullName:  u.FullName,
-		Phone:     u.Phone,
-		Role:      u.Role,
-		CreatedAt: u.CreatedAt,
+		ID:            u.ID,
+		Email:         u.Email,
+		FullName:      u.FullName,
+		Phone:         u.Phone,
+		Role:          u.Role,
+		EmailVerified: u.EmailVerified,
+		CreatedAt:     u.CreatedAt,
 	}
 }
 
 // RegisterRequest — тело POST /auth/register.
 type RegisterRequest struct {
-	Email    string  `json:"email" example:"user@example.com"`
-	Password string  `json:"password" example:"strongpass123"`
-	FullName string  `json:"full_name" example:"Иван Петров"`
-	Phone    *string `json:"phone,omitempty" example:"+79991234567"`
+	Email        string  `json:"email" example:"user@example.com"`
+	Password     string  `json:"password" example:"strongpass123"`
+	FullName     string  `json:"full_name" example:"Иван Петров"`
+	Phone        *string `json:"phone,omitempty" example:"+79991234567"`
+	CaptchaToken string  `json:"captcha_token" example:"<токен от Yandex SmartCaptcha>"`
 }
 
 // LoginRequest — тело POST /auth/login.
@@ -75,13 +79,25 @@ type UpdateMeRequest struct {
 
 // PasswordResetRequestDTO — тело POST /auth/password/reset-request.
 type PasswordResetRequestDTO struct {
-	Email string `json:"email" example:"user@example.com"`
+	Email        string `json:"email" example:"user@example.com"`
+	CaptchaToken string `json:"captcha_token" example:"<токен от Yandex SmartCaptcha>"`
 }
 
 // PasswordResetConfirmDTO — тело POST /auth/password/reset-confirm.
 type PasswordResetConfirmDTO struct {
 	Token       string `json:"token" example:"<токен из ссылки в письме>"`
 	NewPassword string `json:"new_password" example:"newpass456"`
+}
+
+// EmailVerifyConfirmDTO — тело POST /auth/email/verify.
+type EmailVerifyConfirmDTO struct {
+	Token string `json:"token" example:"<токен из ссылки в письме>"`
+}
+
+// EmailVerifyResendDTO — тело POST /auth/email/verify/resend.
+type EmailVerifyResendDTO struct {
+	Email        string `json:"email" example:"user@example.com"`
+	CaptchaToken string `json:"captcha_token" example:"<токен от Yandex SmartCaptcha>"`
 }
 
 // OKResponse — стандартный ответ {"ok": true} для эндпоинтов без полезной нагрузки.

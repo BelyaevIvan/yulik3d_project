@@ -19,6 +19,10 @@ export const catalogApi = {
   listItems: (q: CatalogQuery = {}) =>
     request<ListPage<ItemCardDTO>>('/items', { query: q as any }),
 
+  // Главная страница: до 5 товаров типа (закреплённые + fallback свежими).
+  mainPage: (type: CategoryType) =>
+    request<ItemCardDTO[]>('/items/main', { query: { category_type: type } }),
+
   getItem: (id: string) => request<ItemDetailDTO>(`/items/${id}`),
 
   listCategories: (type?: CategoryType, withSubcategories = false) =>

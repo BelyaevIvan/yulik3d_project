@@ -1,0 +1,30 @@
+{{define "email_verify.html"}}{{template "mail_header" .}}
+<div style="font-size:18px;font-weight:600;margin-bottom:16px;">Подтверждение email</div>
+
+<p style="font-size:15px;line-height:1.6;margin:0 0 16px;">
+  Здравствуйте, <strong>{{.UserName}}</strong>!
+</p>
+
+<p style="font-size:15px;line-height:1.6;margin:0 0 20px;">
+  Спасибо за регистрацию на сайте yulik3d.ru!
+  Чтобы оформлять заказы, подтвердите ваш email — нажмите на кнопку ниже:
+</p>
+
+<div style="text-align:center;margin:28px 0;">
+  <a href="{{.VerifyLink}}" style="display:inline-block;padding:12px 28px;background:#e84d2e;color:#ffffff;text-decoration:none;font-weight:600;border-radius:8px;font-size:15px;">
+    Подтвердить email
+  </a>
+</div>
+
+<p style="font-size:13px;color:#6a6f80;line-height:1.6;margin:0 0 8px;">
+  Если кнопка не работает, скопируйте ссылку в адресную строку браузера:
+</p>
+<p style="font-size:13px;color:#6a6f80;line-height:1.6;margin:0 0 20px;word-break:break-all;">
+  <a href="{{.VerifyLink}}" style="color:#6a6f80;">{{.VerifyLink}}</a>
+</p>
+
+<p style="font-size:14px;color:#6a6f80;line-height:1.6;margin:0;">
+  Ссылка действительна <strong>24 часа</strong>.<br>
+  Если вы не регистрировались на Yulik3D — просто проигнорируйте это письмо.
+</p>
+{{template "mail_footer" .}}{{end}}

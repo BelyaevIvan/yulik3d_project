@@ -23,6 +23,8 @@ type Config struct {
 	SMTP          SMTP
 	Mail          Mail
 	PasswordReset PasswordReset
+	EmailVerify   EmailVerify
+	Captcha       Captcha
 }
 
 type App struct {
@@ -82,6 +84,19 @@ type Mail struct {
 type PasswordReset struct {
 	TokenTTL time.Duration
 	Throttle time.Duration
+}
+
+type EmailVerify struct {
+	TokenTTL time.Duration
+	Throttle time.Duration
+}
+
+type Captcha struct {
+	Enabled   bool
+	ServerKey string
+	// Endpoint вынесен в env, чтобы при необходимости можно было поменять
+	// (например, на тестовый стенд) без правки кода.
+	Endpoint string
 }
 
 type Session struct {
@@ -241,6 +256,15 @@ func Load() (Config, error) {
 		PasswordReset: PasswordReset{
 			TokenTTL: time.Duration(getInt("PWRESET_TOKEN_TTL_SECONDS", 3600)) * time.Second,
 			Throttle: time.Duration(getInt("PWRESET_THROTTLE_SECONDS", 60)) * time.Second,
+		},
+		EmailVerify: EmailVerify{
+			TokenTTL: time.Duration(getInt("EMAIL_VERIFY_TOKEN_TTL_SECONDS", 86400)) * time.Second,
+			Throttle: time.Duration(getInt("EMAIL_VERIFY_THROTTLE_SECONDS", 60)) * time.Second,
+		},
+		Captcha: Captcha{
+			Enabled:   getBool("CAPTCHA_ENABLED", false),
+			ServerKey: getStr("CAPTCHA_SERVER_KEY", "", false),
+			Endpoint:  getStr("CAPTCHA_ENDPOINT", "https://smartcaptcha.cloud.yandex.ru/validate", false),
 		},
 	}
 

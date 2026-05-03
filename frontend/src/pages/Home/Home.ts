@@ -23,16 +23,17 @@ export class HomePage {
     });
 
     try {
-      // Лимит 5 — один ряд на широком экране. На больше — кнопка «Все ...»
+      // Главная: спец-эндпоинт /items/main отдаёт сначала закреплённые админом,
+      // потом добивает свежими видимыми. Лимит 5 — один ряд на широком экране.
       const [fig, mod] = await Promise.all([
-        catalogApi.listItems({ category_type: 'figure', limit: 5 }),
-        catalogApi.listItems({ category_type: 'other', limit: 5 }),
+        catalogApi.mainPage('figure'),
+        catalogApi.mainPage('other'),
       ]);
       this.root.innerHTML = renderTemplate(homeTemplate, {
         loadingFigurines: false, loadingModels: false,
-        figurines: fig.items, models: mod.items,
-        figurinesHtml: this.cards(fig.items),
-        modelsHtml: this.cards(mod.items),
+        figurines: fig, models: mod,
+        figurinesHtml: this.cards(fig),
+        modelsHtml: this.cards(mod),
       });
       syncFavoriteButtons(this.root);
     } catch (e) {

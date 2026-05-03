@@ -18,11 +18,11 @@ func NewUserRepo(db *DB) *UserRepo {
 	return &UserRepo{db: db}
 }
 
-const userCols = `id, email, password_hash, full_name, phone, role, created_at, updated_at`
+const userCols = `id, email, password_hash, full_name, phone, role, email_verified, created_at, updated_at`
 
 func scanUser(row pgx.Row) (model.User, error) {
 	var u model.User
-	err := row.Scan(&u.ID, &u.Email, &u.PasswordHash, &u.FullName, &u.Phone, &u.Role, &u.CreatedAt, &u.UpdatedAt)
+	err := row.Scan(&u.ID, &u.Email, &u.PasswordHash, &u.FullName, &u.Phone, &u.Role, &u.EmailVerified, &u.CreatedAt, &u.UpdatedAt)
 	return u, err
 }
 
@@ -59,6 +59,14 @@ func (r *UserRepo) EmailExists(ctx context.Context, email string) (bool, error) 
 		return false, err
 	}
 	return true, nil
+}
+
+// SetEmailVerified — пометить email пользователя как подтверждённый.
+// Используется после успешного перехода по ссылке из письма.
+func (r *UserRepo) SetEmailVerified(ctx context.Context, id uuid.UUID) error {
+	_, err := r.db.Exec(ctx,
+		`UPDATE "user" SET email_verified = TRUE, updated_at = NOW() WHERE id = $1`, id)
+	return err
 }
 
 // UpdateProfile — обновление full_name / phone / password_hash.

@@ -72,3 +72,13 @@ func (m *MailEnqueuer) EnqueuePasswordReset(ctx context.Context, to, userName, r
 		ResetLink: resetLink,
 	})
 }
+
+// --- service.EmailVerifyMailer ---
+
+func (m *MailEnqueuer) EnqueueEmailVerify(ctx context.Context, to, userName, verifyLink string) error {
+	return m.client.EnqueueEmail(ctx, TaskEmailVerify, EmailVerifyPayload{
+		To:         to,
+		UserName:   userName,
+		VerifyLink: verifyLink,
+	})
+}

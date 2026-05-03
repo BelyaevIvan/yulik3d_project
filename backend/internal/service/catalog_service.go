@@ -14,14 +14,15 @@ import (
 
 // CatalogService — публичная сторона каталога.
 type CatalogService struct {
-	items        *repository.ItemRepo
-	pictures     *repository.PictureRepo
-	options      *repository.ItemOptionRepo
-	optionTypes  *repository.OptionTypeRepo
-	itemSub      *repository.ItemSubcategoryRepo
-	categories   *repository.CategoryRepo
+	items         *repository.ItemRepo
+	pictures      *repository.PictureRepo
+	options       *repository.ItemOptionRepo
+	optionTypes   *repository.OptionTypeRepo
+	itemSub       *repository.ItemSubcategoryRepo
+	categories    *repository.CategoryRepo
 	subcategories *repository.SubcategoryRepo
-	minio        *MinioClient
+	mainPin       *repository.ItemMainPinRepo
+	minio         *MinioClient
 }
 
 func NewCatalogService(
@@ -32,11 +33,13 @@ func NewCatalogService(
 	itemSub *repository.ItemSubcategoryRepo,
 	categories *repository.CategoryRepo,
 	subcategories *repository.SubcategoryRepo,
+	mainPin *repository.ItemMainPinRepo,
 	minio *MinioClient,
 ) *CatalogService {
 	return &CatalogService{
 		items: items, pictures: pictures, options: options, optionTypes: optionTypes,
-		itemSub: itemSub, categories: categories, subcategories: subcategories, minio: minio,
+		itemSub: itemSub, categories: categories, subcategories: subcategories,
+		mainPin: mainPin, minio: minio,
 	}
 }
 
@@ -65,6 +68,74 @@ func (s *CatalogService) ListItems(ctx context.Context, f model.CatalogFilter, a
 		Limit:  f.Pagination.Limit,
 		Offset: f.Pagination.Offset,
 	}, nil
+}
+
+// ListMainPage — товары для главной страницы по типу. До 5 штук.
+//
+// Алгоритм:
+//  1. Сначала закреплённые товары этого типа (через item_main_pin), отсортированные по position.
+//     Если закреплённый оказался скрыт (теоретически не должно случаться, т.к. при скрытии
+//     закрепление снимается, но на всякий случай) — пропускаем его.
+//  2. Если набралось меньше 5 — добиваем «свежими видимыми товарами этого типа»
+//     (created_at DESC), исключая уже добавленные.
+//
+// Все товары возвращаются как ItemCardDTO с картинками и категориями.
+func (s *CatalogService) ListMainPage(ctx context.Context, t model.CategoryType) ([]model.ItemCardDTO, error) {
+	const cap = 5
+
+	// 1. Закреплённые
+	pins, err := s.mainPin.ListByType(ctx, t)
+	if err != nil {
+		return nil, fmt.Errorf("list pins: %w", err)
+	}
+	pickedItems := make([]model.Item, 0, cap)
+	pickedSet := make(map[uuid.UUID]bool, cap)
+	for _, p := range pins {
+		it, err := s.items.GetByID(ctx, p.ItemID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				continue // товар удалён, ON DELETE CASCADE должен был сработать — игнор
+			}
+			return nil, fmt.Errorf("get pinned item: %w", err)
+		}
+		if it.Hidden {
+			continue // защита: показываем только видимые
+		}
+		pickedItems = append(pickedItems, it)
+		pickedSet[it.ID] = true
+		if len(pickedItems) >= cap {
+			break
+		}
+	}
+
+	// 2. Fallback — добираем до 5 свежими товарами этого типа
+	if len(pickedItems) < cap {
+		need := cap - len(pickedItems)
+		// CatalogFilter.CategoryType — *string, поэтому приводим из enum-типа.
+		typeStr := string(t)
+		// Берём с запасом, потом отфильтруем уже выбранные.
+		f := model.CatalogFilter{
+			CategoryType: &typeStr,
+			Sort:         "created_desc",
+			Pagination:   model.Pagination{Limit: need + len(pickedItems), Offset: 0},
+		}
+		fallback, err := s.items.List(ctx, f)
+		if err != nil {
+			return nil, fmt.Errorf("fallback list: %w", err)
+		}
+		for _, it := range fallback {
+			if pickedSet[it.ID] {
+				continue
+			}
+			pickedItems = append(pickedItems, it)
+			pickedSet[it.ID] = true
+			if len(pickedItems) >= cap {
+				break
+			}
+		}
+	}
+
+	return s.buildCards(ctx, pickedItems, false)
 }
 
 // BuildItemCards — публичный helper для переиспользования в FavoriteService.

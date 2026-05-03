@@ -23,6 +23,7 @@ func loadTemplates() (*templates, error) {
 		"templates/order_created_admin.html",
 		"templates/order_status_changed_user.html",
 		"templates/password_reset.html",
+		"templates/email_verify.html",
 	)
 	if err != nil {
 		return nil, fmt.Errorf("parse html templates: %w", err)
@@ -32,6 +33,7 @@ func loadTemplates() (*templates, error) {
 		"templates/order_created_admin.txt",
 		"templates/order_status_changed_user.txt",
 		"templates/password_reset.txt",
+		"templates/email_verify.txt",
 	)
 	if err != nil {
 		return nil, fmt.Errorf("parse text templates: %w", err)

@@ -32,6 +32,7 @@ desktop.ini
 # Frontend (будет позже)
 frontend/dist/
 frontend/.vite/
+frontend/node_modules/
 
 # Docker volumes (локальные)
 .volumes/

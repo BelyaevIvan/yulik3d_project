@@ -13,16 +13,16 @@ const tpl = `
 </div>
 
 <div style="display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap;">
-  <input id="filterQ" placeholder="Поиск" style="flex:1; min-width:200px; padding:8px 12px; background:#1a1a4a; color:#fff; border:1px solid #2a2a5a; border-radius:6px;" />
+  <input id="filterQ" placeholder="Поиск" value="{{filterQ}}" style="flex:1; min-width:200px; padding:8px 12px; background:#1a1a4a; color:#fff; border:1px solid #2a2a5a; border-radius:6px;" />
   <select id="filterType" style="padding:8px 12px; background:#1a1a4a; color:#fff; border:1px solid #2a2a5a; border-radius:6px;">
-    <option value="">Любой тип</option>
-    <option value="figure">Фигурки</option>
-    <option value="other">Макеты</option>
+    <option value="" {{#if (eq filterType "")}}selected{{/if}}>Любой тип</option>
+    <option value="figure" {{#if (eq filterType "figure")}}selected{{/if}}>Фигурки</option>
+    <option value="other" {{#if (eq filterType "other")}}selected{{/if}}>Макеты</option>
   </select>
   <select id="filterHidden" style="padding:8px 12px; background:#1a1a4a; color:#fff; border:1px solid #2a2a5a; border-radius:6px;">
-    <option value="any">Любой статус</option>
-    <option value="false">Видимые</option>
-    <option value="true">Скрытые</option>
+    <option value="any" {{#if (eq filterHidden "any")}}selected{{/if}}>Любой статус</option>
+    <option value="false" {{#if (eq filterHidden "false")}}selected{{/if}}>Видимые</option>
+    <option value="true" {{#if (eq filterHidden "true")}}selected{{/if}}>Скрытые</option>
   </select>
 </div>
 
@@ -52,48 +52,78 @@ const tpl = `
 export class AdminItemsPage {
   private container: HTMLElement | null = null;
 
+  // State фильтров — единый источник правды. DOM-селекты лишь отображают это.
+  // Исправляет баги:
+  //   1) шаблон при перерисовке сбрасывал select на «Любой тип», даже когда
+  //      загружали отфильтрованный список;
+  //   2) попытка вернуться к «Любому» не давала change-события (значение в DOM
+  //      уже было пустое после визуального сброса) — запрос не уходил.
+  private filterQ = '';
+  private filterType: '' | 'figure' | 'other' = '';
+  private filterHidden: 'any' | 'true' | 'false' = 'any';
+
+  // Дебаунс-таймер для поискового поля. Хранится на инстансе, чтобы пережить
+  // перерисовки и не накапливать таймеры.
+  private searchTimer: number | null = null;
+
   constructor(private root: HTMLElement) {}
 
   async render(): Promise<void> {
     if (!requireAdmin()) return;
     this.container = renderAdminShell(this.root, 'items');
-    this.container.innerHTML = renderTemplate(tpl, { loading: true, items: [] });
-
+    this.renderShell(true);
     await this.load();
+  }
+
+  // renderShell — перерисовать всю страницу со списком (или плейсхолдером).
+  // Вызывается из load() после ответа бэка. Гарантирует, что селекты получают
+  // правильный selected-атрибут из текущего state.
+  private renderShell(loading: boolean, items: unknown[] = []): void {
+    if (!this.container) return;
+    this.container.innerHTML = renderTemplate(tpl, {
+      loading,
+      items,
+      filterQ: this.filterQ,
+      filterType: this.filterType,
+      filterHidden: this.filterHidden,
+    });
     this.bindFilters();
+    if (!loading) this.bindRowEvents();
   }
 
   private async load(): Promise<void> {
     if (!this.container) return;
-    const q = (document.getElementById('filterQ') as HTMLInputElement | null)?.value || '';
-    const type = (document.getElementById('filterType') as HTMLSelectElement | null)?.value || '';
-    const hidden = (document.getElementById('filterHidden') as HTMLSelectElement | null)?.value as 'any' | 'true' | 'false' || 'any';
     try {
       const res = await adminApi.listItems({
-        q: q || undefined,
-        category_type: type ? (type as any) : undefined,
-        hidden,
+        q: this.filterQ || undefined,
+        category_type: this.filterType ? this.filterType : undefined,
+        hidden: this.filterHidden,
         limit: 100,
       });
-      this.container.innerHTML = renderTemplate(tpl, { loading: false, items: res.items });
-      this.bindRowEvents();
-      this.bindFilters();
-    } catch (e) {
-      this.container.innerHTML = renderTemplate(tpl, { loading: false, items: [] });
+      this.renderShell(false, res.items);
+    } catch {
+      this.renderShell(false, []);
     }
   }
 
   private bindFilters(): void {
-    const q = document.getElementById('filterQ') as HTMLInputElement | null;
-    const t = document.getElementById('filterType') as HTMLSelectElement | null;
-    const h = document.getElementById('filterHidden') as HTMLSelectElement | null;
-    let timer: number | null = null;
+    const q = this.container?.querySelector<HTMLInputElement>('#filterQ');
+    const t = this.container?.querySelector<HTMLSelectElement>('#filterType');
+    const h = this.container?.querySelector<HTMLSelectElement>('#filterHidden');
+
     q?.addEventListener('input', () => {
-      if (timer) clearTimeout(timer);
-      timer = window.setTimeout(() => this.load(), 300);
+      this.filterQ = q.value;
+      if (this.searchTimer) window.clearTimeout(this.searchTimer);
+      this.searchTimer = window.setTimeout(() => this.load(), 300);
     });
-    t?.addEventListener('change', () => this.load());
-    h?.addEventListener('change', () => this.load());
+    t?.addEventListener('change', () => {
+      this.filterType = t.value as '' | 'figure' | 'other';
+      this.load();
+    });
+    h?.addEventListener('change', () => {
+      this.filterHidden = h.value as 'any' | 'true' | 'false';
+      this.load();
+    });
   }
 
   private bindRowEvents(): void {

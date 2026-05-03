@@ -49,6 +49,32 @@ func (h *CatalogHandler) ListItems(w http.ResponseWriter, r *http.Request) {
 	OK(w, page)
 }
 
+// MainPage godoc
+// @Summary      Товары для главной страницы
+// @Description  До 5 товаров указанного типа: сначала закреплённые админом по позиции, затем свежие видимые товары для добивки. Дубликатов не будет.
+// @Tags         catalog
+// @Produce      json
+// @Param        category_type  query  string  true  "figure | other"  Enums(figure, other)
+// @Success      200  {array}  model.ItemCardDTO
+// @Failure      400  {object}  model.ErrorResponse
+// @Router       /items/main [get]
+func (h *CatalogHandler) MainPage(w http.ResponseWriter, r *http.Request) {
+	t := model.CategoryType(r.URL.Query().Get("category_type"))
+	if t != model.CategoryTypeFigure && t != model.CategoryTypeOther {
+		h.Err(w, r, model.NewInvalidInput("category_type должен быть figure или other"))
+		return
+	}
+	cards, err := h.catalog.ListMainPage(r.Context(), t)
+	if err != nil {
+		h.Err(w, r, err)
+		return
+	}
+	if cards == nil {
+		cards = []model.ItemCardDTO{}
+	}
+	OK(w, cards)
+}
+
 // GetItem godoc
 // @Summary      Карточка товара (публичная)
 // @Description  Работает и для скрытых товаров (hidden=true) — фронт показывает пометку.

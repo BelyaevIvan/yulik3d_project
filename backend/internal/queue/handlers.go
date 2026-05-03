@@ -102,4 +102,25 @@ func (s *Server) RegisterHandlers(m *mail.Mailer) {
 		s.log.Info("email sent", "type", t.Type(), "to", p.To)
 		return nil
 	})
+
+	s.mux.HandleFunc(TaskEmailVerify, func(ctx context.Context, t *asynq.Task) error {
+		var p EmailVerifyPayload
+		if err := json.Unmarshal(t.Payload(), &p); err != nil {
+			return fmt.Errorf("unmarshal: %w", err)
+		}
+		if !m.Configured() {
+			s.log.Warn("smtp not configured, skipping email", "type", t.Type(), "to", p.To)
+			return nil
+		}
+		err := m.SendEmailVerify(p.To, mail.EmailVerifyData{
+			UserName:   p.UserName,
+			VerifyLink: p.VerifyLink,
+		})
+		if err != nil {
+			s.log.Error("send email_verify", "err", err, "to", p.To)
+			return err
+		}
+		s.log.Info("email sent", "type", t.Type(), "to", p.To)
+		return nil
+	})
 }

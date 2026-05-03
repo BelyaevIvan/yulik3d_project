@@ -5,6 +5,7 @@ import { router } from '@/router/router';
 import { renderTemplate } from '@/utils/template';
 import { toast } from '@/components/Toast/Toast';
 import { setPageMeta, clearProductJsonLd } from '@/utils/seo';
+import { renderEmailVerifyBanner } from '@/components/EmailVerifyBanner/EmailVerifyBanner';
 import './Profile.scss';
 
 const tpl = `
@@ -71,6 +72,7 @@ export class ProfilePage {
       full_name: u.full_name,
       phone: u.phone || '',
     });
+    renderEmailVerifyBanner(this.root);
 
     // Profile form
     const pf = this.root.querySelector<HTMLFormElement>('#profileForm');

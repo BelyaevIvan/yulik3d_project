@@ -224,6 +224,48 @@ func renameItemCols(prefix string) string {
 	return strings.Join(parts, ", ")
 }
 
+// HasCategoryType — true, если товар привязан хотя бы к одной подкатегории
+// указанного типа (figure / other). Используется при закреплении на главной,
+// чтобы запретить «фигурку в макетах».
+func (r *ItemRepo) HasCategoryType(ctx context.Context, itemID uuid.UUID, t model.CategoryType) (bool, error) {
+	const q = `
+		SELECT EXISTS (
+			SELECT 1 FROM item_subcategory isc
+			JOIN subcategory sc ON sc.id = isc.subcategory_id
+			JOIN category c ON c.id = sc.category_id
+			WHERE isc.item_id = $1 AND c.type = $2
+		)`
+	var ok bool
+	err := r.db.QueryRow(ctx, q, itemID, t).Scan(&ok)
+	return ok, err
+}
+
+// CategoryTypesForItem — список уникальных типов, к которым относится товар
+// (через item_subcategory → subcategory → category). Используется при изменении
+// подкатегорий, чтобы понять, какие закрепления нужно снять.
+func (r *ItemRepo) CategoryTypesForItem(ctx context.Context, itemID uuid.UUID) ([]model.CategoryType, error) {
+	const q = `
+		SELECT DISTINCT c.type
+		FROM item_subcategory isc
+		JOIN subcategory sc ON sc.id = isc.subcategory_id
+		JOIN category c ON c.id = sc.category_id
+		WHERE isc.item_id = $1`
+	rows, err := r.db.Query(ctx, q, itemID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []model.CategoryType
+	for rows.Next() {
+		var t model.CategoryType
+		if err := rows.Scan(&t); err != nil {
+			return nil, err
+		}
+		out = append(out, t)
+	}
+	return out, rows.Err()
+}
+
 // ListAllVisible — все не-hidden товары для sitemap. Без пагинации, лимит 5000.
 func (r *ItemRepo) ListAllVisible(ctx context.Context) ([]model.Item, error) {
 	const q = `SELECT ` + itemCols + ` FROM item WHERE hidden = false ORDER BY created_at DESC LIMIT 5000`

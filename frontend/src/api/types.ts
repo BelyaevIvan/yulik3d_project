@@ -9,6 +9,7 @@ export interface UserDTO {
   full_name: string;
   phone?: string | null;
   role: Role;
+  email_verified: boolean;
   created_at: string;
 }
 

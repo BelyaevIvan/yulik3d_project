@@ -396,11 +396,29 @@
       pointer-events: none;
       z-index: 1003;
 
+      // Невидимый «мост» между кнопкой и dropdown: перекрывает 4-пиксельный
+      // gap, чтобы мышь, идущая от кнопки к пунктам меню, не теряла :hover
+      // на родительском .header__user. Без этого dropdown схлопывался при
+      // попытке навести мышь на пункт.
+      &::before {
+        content: '';
+        position: absolute;
+        top: -4px;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: transparent;
+      }
+
       @media (max-width: $breakpoint-lg) {
         position: fixed;
         top: $header-height;
         right: $spacing-md;
         left: auto;
+
+        // На mobile dropdown далеко от кнопки (fixed top: $header-height),
+        // мост не нужен и даже вреден — отключаем.
+        &::before { display: none; }
       }
     }
 

@@ -2,10 +2,14 @@ import { defineConfig, loadEnv } from 'vite';
 import path from 'path';
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '');
+  // .env лежит в корне проекта (на уровень выше frontend/), а не в frontend/.
+  // Vite по умолчанию читает из cwd → явно указываем envDir = корень.
+  const envDir = path.resolve(__dirname, '..');
+  const env = loadEnv(mode, envDir, '');
   const backendURL = env.VITE_BACKEND_URL || 'http://localhost:8080';
 
   return {
+    envDir,
     resolve: {
       alias: {
         '@': path.resolve(__dirname, 'src'),

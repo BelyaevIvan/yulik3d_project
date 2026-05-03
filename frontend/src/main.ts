@@ -15,6 +15,7 @@ import { LoginPage } from './pages/Auth/Login';
 import { RegisterPage } from './pages/Auth/Register';
 import { ForgotPasswordPage } from './pages/Auth/ForgotPassword';
 import { ResetPasswordPage } from './pages/Auth/ResetPassword';
+import { VerifyEmailPage } from './pages/Auth/VerifyEmail';
 import { ProfilePage } from './pages/Profile/Profile';
 import { FavoritesPage } from './pages/Favorites/Favorites';
 import { MyOrdersPage } from './pages/Orders/MyOrders';
@@ -22,6 +23,7 @@ import { OrderDetailPage } from './pages/Orders/OrderDetail';
 import { AdminItemsPage } from './pages/Admin/AdminItems';
 import { AdminItemFormPage } from './pages/Admin/AdminItemForm';
 import { AdminCategoriesPage } from './pages/Admin/AdminCategories';
+import { AdminMainPagePage } from './pages/Admin/AdminMainPage';
 import { AdminOptionTypesPage } from './pages/Admin/AdminOptionTypes';
 import { AdminOrdersPage, AdminOrderDetailPage } from './pages/Admin/AdminOrders';
 import { NotFoundPage } from './pages/Errors/NotFound';
@@ -83,6 +85,7 @@ class App {
     router.addRoute('/register', (_, q) => { set(''); new RegisterPage(this.contentEl, q).render(); });
     router.addRoute('/forgot-password', () => { set(''); new ForgotPasswordPage(this.contentEl).render(); });
     router.addRoute('/password-reset', (_, q) => { set(''); new ResetPasswordPage(this.contentEl, q).render(); });
+    router.addRoute('/verify-email', (_, q) => { set(''); new VerifyEmailPage(this.contentEl, q).render(); });
 
     router.addRoute('/profile', () => { set(''); new ProfilePage(this.contentEl).render(); });
     router.addRoute('/favorites', () => { set(''); new FavoritesPage(this.contentEl).render(); });
@@ -94,6 +97,7 @@ class App {
     router.addRoute('/admin/items/new', () => { set(''); new AdminItemFormPage(this.contentEl).render(); });
     router.addRoute('/admin/items/:id', (p) => { set(''); new AdminItemFormPage(this.contentEl, p.id).render(); });
     router.addRoute('/admin/categories', () => { set(''); new AdminCategoriesPage(this.contentEl).render(); });
+    router.addRoute('/admin/main-page', () => { set(''); new AdminMainPagePage(this.contentEl).render(); });
     router.addRoute('/admin/option-types', () => { set(''); new AdminOptionTypesPage(this.contentEl).render(); });
     router.addRoute('/admin/orders', () => { set(''); new AdminOrdersPage(this.contentEl).render(); });
     router.addRoute('/admin/orders/:id', (p) => { set(''); new AdminOrderDetailPage(this.contentEl, p.id).render(); });

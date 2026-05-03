@@ -10,6 +10,7 @@ const (
 	TaskEmailOrderCreatedAdmin   = "email:order_created_admin"
 	TaskEmailOrderStatusChanged  = "email:order_status_changed"
 	TaskEmailPasswordReset       = "email:password_reset"
+	TaskEmailVerify              = "email:verify"
 )
 
 // EmailOrderCreatedAdminPayload — все данные для письма админу о новом заказе.
@@ -61,4 +62,11 @@ type EmailPasswordResetPayload struct {
 	To        string `json:"to"`
 	UserName  string `json:"user_name"`
 	ResetLink string `json:"reset_link"`
+}
+
+// EmailVerifyPayload — для письма с ссылкой подтверждения email.
+type EmailVerifyPayload struct {
+	To         string `json:"to"`
+	UserName   string `json:"user_name"`
+	VerifyLink string `json:"verify_link"`
 }
